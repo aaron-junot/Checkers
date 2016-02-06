@@ -8,7 +8,7 @@ After we have a few ideas, we'll vote on the best one.
 
 App ideas:
 
-SimpleBudgetApp
+1. SimpleBudgetApp
 -create or delete transactions
 -transaction is a deposit or withdrawal, has a date, category and amount
 -categories are picked from a pull down list
@@ -27,13 +27,13 @@ SimpleBudgetApp
 |12/24/2015|Gifts      |  -$500.00|
 +---------------------------------+
 
-Go
+2. Go
 -https://en.wikipedia.org/wiki/Go_(game)
 -enforces all rules
 -changeable playing field size
 -play alternates between two players
 
-InstagramClone
+3. InstagramClone
 -user can import photo
 -numerous photo manipulation tools, each on its own button
 -save as button
