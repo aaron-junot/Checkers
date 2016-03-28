@@ -4,7 +4,7 @@ package checkers;
  * This class creates a piece object to be used in a game of checkers. The class
  * contains variables to keep track of which color the piece is and whether or
  * not it is a king (that is, it can move backwards). Note that if the
- * constructor is passed an argument other than b or w, an exception is thrown.
+ * constructor is passed an argument other than b or r, an exception is thrown.
  * 
  * @author Brent H
  */
@@ -14,13 +14,13 @@ public class Piece {
     private char pieceColor;
     
     /**
-     * @param color (limited to b or w, otherwise an exception is thrown).
+     * @param color (limited to b or r, otherwise an exception is thrown).
      * @exception IllegalArgumentException
      */
     public Piece(char color){
-        if(!(color == 'b' || color == 'w')){
+        if(!(color == 'b' || color == 'r')){
             throw new IllegalArgumentException(
-                    "Piece color needs to be either 'b' or 'w'.");
+                    "Piece color needs to be either 'b' or 'r'.");
         }
         pieceColor = color;
     }
