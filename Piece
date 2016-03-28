@@ -1,0 +1,50 @@
+package checkers;
+
+/**
+ * This class creates a piece object to be used in a game of checkers. The class
+ * contains variables to keep track of which color the piece is and whether or
+ * not it is a king (that is, it can move backwards). Note that if the
+ * constructor is passed an argument other than b or w, an exception is thrown.
+ * 
+ * @author Brent H
+ */
+public class Piece {
+    
+    private boolean isKing = false;
+    private char pieceColor;
+    
+    /**
+     * @param color (limited to b or w, otherwise an exception is thrown).
+     * @exception IllegalArgumentException
+     */
+    public Piece(char color){
+        if(!(color == 'b' || color == 'w')){
+            throw new IllegalArgumentException(
+                    "Piece color needs to be either 'b' or 'w'.");
+        }
+        pieceColor = color;
+    }
+    
+    /**
+     * promotePiece() changes the piece to a king, which allows the piece to 
+     * move backwards.
+     */
+    private void promotePiece(){
+        isKing = true;
+    }
+    
+    /**
+     * @return boolean value to determine if the piece is a king.
+     */
+    public boolean getKingStatus(){
+        return isKing;
+    }
+    
+    /**
+     * @return piece color. 
+     */
+    public char getColor(){
+        return pieceColor;
+    }
+    
+}
