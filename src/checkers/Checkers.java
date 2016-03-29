@@ -17,7 +17,8 @@ public class Checkers implements ActionListener {
     private static JFrame frame;
     private static JPanel primaryPanel;
     private static JPanel board;
-    private static HashMap<Integer, Piece> boardLocations = new HashMap<>();
+    private static HashMap<Integer, Piece> boardLocations = 
+            new HashMap<Integer, Piece>();
     private static HashMap<Integer, JButton> boardSpaces = new HashMap<>();
     
     private static boolean selectionMade = false;
@@ -45,12 +46,6 @@ public class Checkers implements ActionListener {
         // size is the size of each space on the board
         Dimension size = new Dimension(70, 70);
         board = new JPanel(new GridLayout(8, 8));
-        MouseListener mouseListener = new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent mouseEvent) {
-                highlightSpace(mouseEvent.getComponent());
-            }
-        };
         // creates all the spaces and add them to the board
         for (int i = 1; i < 9; i++) {
             for (int j = 1; j < 9; j++) {
@@ -67,7 +62,7 @@ public class Checkers implements ActionListener {
                 }
                 
                 //Make sure the button doesn't have a border
-                space.setBorder(null);
+                space.setBorder(BorderFactory.createEmptyBorder());
                 
                 //This will ensure that the correct number is assigned
                 int keyValue = 10*j + i;
@@ -107,8 +102,7 @@ public class Checkers implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e){
         int key = Integer.parseInt(e.getActionCommand());
-        highlightSpace(boardSpaces.get(key));
-        System.out.println(key);
+        highlightSpace(boardSpaces.get(key)); 
     }
     
     
@@ -136,13 +130,16 @@ public class Checkers implements ActionListener {
     /**
      * Highlights the space to indicate the user's selection or possible moves
      * 
-     * @param space the Component that was clicked
+     * @param space the Object that was clicked
      */
-    public static void highlightSpace(Component space) {
-        JComponent selection = (JComponent) space;
+    public static void highlightSpace(Object space) {
+        /* 
+        * Need to set border with method from JComponent, but ActionListener
+        * needs to be an Object so a typecast is necessary
+        */
+        JButton selection = (JButton) space;
             
-        if (selection.getBorder() == null || 
-            selection.getBorder() instanceof EmptyBorder){
+        if (selection.getBorder() instanceof EmptyBorder){
 
             //Check that a selection hasn't already been made
             if(selectionMade){
