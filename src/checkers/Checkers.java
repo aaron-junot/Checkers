@@ -3,6 +3,8 @@ package checkers;
 import java.awt.*;
 import java.util.HashMap;
 import javax.swing.*;
+import java.awt.event.*;
+import javax.swing.border.*;
 
 /**
  * This is the main class for the game of Checkers. This class draws the GUI,
@@ -40,6 +42,12 @@ public class Checkers {
         // size is the size of each space on the board
         Dimension size = new Dimension(70, 70);
         board = new JPanel(new GridLayout(8, 8));
+        MouseListener mouseListener = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent mouseEvent) {
+                highlightSpace(mouseEvent.getComponent());
+            }
+        };
         // creates all the spaces and add them to the board
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
@@ -54,6 +62,7 @@ public class Checkers {
                 } else {
                     space.setBackground(Color.BLACK);
                 }
+                space.addMouseListener(mouseListener);
                 board.add(space);
             }
         }
@@ -97,16 +106,36 @@ public class Checkers {
             }
         }
     }
+    
+    /**
+     * Highlights the space to indicate the user's selection or possible moves
+     * 
+     * @param space the Component that was clicked
+     */
+    public static void highlightSpace(Component space) {
+        /* 
+        * Need to set border with method from JComponent, but MouseListener
+        * needs to be a java.awt.Component so a typecast is necessary
+        */
+        if (space instanceof JComponent){            
+            JComponent selection = (JComponent) space;
+            if (selection.getBorder() == null || selection.getBorder() instanceof EmptyBorder){
+                selection.setBorder(BorderFactory.createLineBorder(Color.YELLOW));
+            } else {
+                selection.setBorder(BorderFactory.createEmptyBorder());
+            }
+        }
+    }
 
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 new Checkers();
             }
         });
     }
-
 }
