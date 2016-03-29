@@ -17,8 +17,11 @@ public class Checkers {
     private static JFrame frame;
     private static JPanel primaryPanel;
     private static JPanel board;
-    private static HashMap<Integer, Piece> boardLocations = new HashMap<Integer, Piece>();
-
+    private static HashMap<Integer, Piece> boardLocations = 
+            new HashMap<Integer, Piece>();
+    
+    private static boolean selectionMade = false;
+    
     public Checkers() {
         createGUI();
        // setBoard(); /*Will uncomment when method definition is finished */
@@ -119,10 +122,30 @@ public class Checkers {
         */
         if (space instanceof JComponent){            
             JComponent selection = (JComponent) space;
-            if (selection.getBorder() == null || selection.getBorder() instanceof EmptyBorder){
-                selection.setBorder(BorderFactory.createLineBorder(Color.YELLOW));
+            
+            if (selection.getBorder() == null || 
+                selection.getBorder() instanceof EmptyBorder){
+                
+                //Check that a selection hasn't already been made
+                if(selectionMade){
+                    JOptionPane.showMessageDialog(null, 
+                        "A piece has already been selected. Please select a"
+                                + " legal move or reselct the piece to clear"
+                                + " your selection.",
+                        "Invalid Selection", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                
+                selection.setBorder(
+                        BorderFactory.createLineBorder(Color.YELLOW));
+                
+                selectionMade = true; //set boolean value to true, indicating
+                                      //a selection has been made to eliminate
+                                      //multiple selections
+                
             } else {
                 selection.setBorder(BorderFactory.createEmptyBorder());
+                selectionMade = false;
             }
         }
     }
