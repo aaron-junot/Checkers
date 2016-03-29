@@ -12,13 +12,13 @@ import javax.swing.border.*;
  *
  * @author Aaron S
  */
-public class Checkers {
+public class Checkers implements ActionListener {
 
     private static JFrame frame;
     private static JPanel primaryPanel;
     private static JPanel board;
-    private static HashMap<Integer, Piece> boardLocations = 
-            new HashMap<Integer, Piece>();
+    private static HashMap<Integer, Piece> boardLocations = new HashMap<>();
+    private static HashMap<Integer, JButton> boardSpaces = new HashMap<>();
     
     private static boolean selectionMade = false;
     
@@ -30,7 +30,7 @@ public class Checkers {
     /**
      * Creates the GUI and displays it for the user
      */
-    public static void createGUI() {
+    public void createGUI() {
         frame = new JFrame("Checkers");
         primaryPanel = new JPanel(new BorderLayout());
         
@@ -52,10 +52,10 @@ public class Checkers {
             }
         };
         // creates all the spaces and add them to the board
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
+        for (int i = 1; i < 9; i++) {
+            for (int j = 1; j < 9; j++) {
                 int count = j;
-                JPanel space = new JPanel();
+                JButton space = new JButton();
                 space.setPreferredSize(size);
                 if (i % 2 != 0) {
                     count++;
@@ -65,7 +65,22 @@ public class Checkers {
                 } else {
                     space.setBackground(Color.BLACK);
                 }
-                space.addMouseListener(mouseListener);
+                
+                //Make sure the button doesn't have a border
+                space.setBorder(null);
+                
+                //This will ensure that the correct number is assigned
+                int keyValue = 10*j + i;
+                
+                //ActionCommand takes a string, we can parse it back later
+                space.setActionCommand(""+keyValue);
+                space.addActionListener(this); //ActionListener can determine
+                                               //What needs to be done based on
+                                               //Action command
+                
+                //Put the value into the map                               
+                boardSpaces.put(keyValue, space);
+                
                 board.add(space);
             }
         }
@@ -88,7 +103,15 @@ public class Checkers {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
-
+    
+    @Override
+    public void actionPerformed(ActionEvent e){
+        int key = Integer.parseInt(e.getActionCommand());
+        highlightSpace(boardSpaces.get(key));
+        System.out.println(key);
+    }
+    
+    
     /**
      * Sets up the board to initial set up. Used to reset the board when the
      * user wishes to play a new game.
@@ -116,37 +139,31 @@ public class Checkers {
      * @param space the Component that was clicked
      */
     public static void highlightSpace(Component space) {
-        /* 
-        * Need to set border with method from JComponent, but MouseListener
-        * needs to be a java.awt.Component so a typecast is necessary
-        */
-        if (space instanceof JComponent){            
-            JComponent selection = (JComponent) space;
+        JComponent selection = (JComponent) space;
             
-            if (selection.getBorder() == null || 
-                selection.getBorder() instanceof EmptyBorder){
-                
-                //Check that a selection hasn't already been made
-                if(selectionMade){
-                    JOptionPane.showMessageDialog(null, 
-                        "A piece has already been selected. Please select a"
-                                + " legal move or reselct the piece to clear"
-                                + " your selection.",
-                        "Invalid Selection", JOptionPane.INFORMATION_MESSAGE);
-                    return;
-                }
-                
-                selection.setBorder(
-                        BorderFactory.createLineBorder(Color.YELLOW));
-                
-                selectionMade = true; //set boolean value to true, indicating
-                                      //a selection has been made to eliminate
-                                      //multiple selections
-                
-            } else {
-                selection.setBorder(BorderFactory.createEmptyBorder());
-                selectionMade = false;
+        if (selection.getBorder() == null || 
+            selection.getBorder() instanceof EmptyBorder){
+
+            //Check that a selection hasn't already been made
+            if(selectionMade){
+                JOptionPane.showMessageDialog(null, 
+                    "A piece has already been selected. Please select a"
+                            + " legal move or reselct the piece to clear"
+                            + " your selection.",
+                    "Invalid Selection", JOptionPane.INFORMATION_MESSAGE);
+                return;
             }
+
+            selection.setBorder(
+                    BorderFactory.createLineBorder(Color.YELLOW));
+
+            selectionMade = true; //set boolean value to true, indicating
+                                  //a selection has been made to eliminate
+                                  //multiple selections
+
+        } else {
+            selection.setBorder(BorderFactory.createEmptyBorder());
+            selectionMade = false;
         }
     }
 
