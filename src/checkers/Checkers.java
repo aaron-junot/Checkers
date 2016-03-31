@@ -5,7 +5,6 @@ import java.util.HashMap;
 import javax.swing.*;
 import java.awt.event.*;
 import java.util.Map;
-import javax.swing.border.*;
 
 /**
  * This is the main class for the game of Checkers. This class draws the GUI,
@@ -39,6 +38,7 @@ public class Checkers implements ActionListener {
     //Movement related variables
     private boolean pieceJumped = false;
     private boolean jumpAvailable = false;
+    private boolean forceJump = false;
     private int[] legalMoves;
     private int[] jumpMoves;
     
@@ -185,10 +185,14 @@ public class Checkers implements ActionListener {
     private void takeAction(int key){
         
         if(selectionMade){
-            if(key == spaceSelected){
+            if(key == spaceSelected && !forceJump){
                 removeHighlight();
                 selectionMade = false;
                 spaceSelected = -1; //return to default value
+            } else if (key == spaceSelected && forceJump) {
+                JOptionPane.showMessageDialog(null, "You must continue to "
+                        + "jump until no more jumps are available!",
+                        "Mandatory jump required", JOptionPane.ERROR_MESSAGE);
             } else {
                 if(isMoveLegal(key)) {
                     movePiece(key, spaceSelected);
@@ -205,8 +209,14 @@ public class Checkers implements ActionListener {
                     pieceMap.get(key).getColor() == currentPlayer){
                 highlightSpace(key, YELLOW);
                 checkMoves(key);
-                for(int move : legalMoves){
-                    highlightSpace(move, GREEN);
+                if(forceJump){
+                    for(int move : jumpMoves){
+                        highlightSpace(move, GREEN);
+                    }
+                } else {
+                    for(int move : legalMoves){
+                        highlightSpace(move, GREEN);
+                    }
                 }
             } else if(pieceMap.containsKey(key) && 
                     pieceMap.get(key).getColor() != currentPlayer){
@@ -290,24 +300,32 @@ public class Checkers implements ActionListener {
             }
         }
         
-        //Finalize jumpMoves array after option[] was checked for out of bounds
+        //Finalize jumpMoves after option[] was checked for out of bounds
         for(int i=0;i<possibilities;i++){
             if(jumpMoves[i] == 1 && option[i] != -1){
                 jumpMoves[i] = option[i]; //set that index to the key value
                 jumpAvailable = true;
+            } else {
+                jumpMoves[i] = -1;
             }
         }
         
         legalMoves = option;
-        
     }
     
     private boolean isMoveLegal(int key){
         boolean test = false;
         
-        for(int move : legalMoves){
-            if (key == move)
-                test = true;
+        if(forceJump){
+            for(int move : jumpMoves){
+                if(key == move)
+                    test = true;
+            }
+        } else {
+            for(int move : legalMoves){
+                if (key == move)
+                    test = true;
+            }
         }
         
         return test;
@@ -353,24 +371,23 @@ public class Checkers implements ActionListener {
     }
     
     private void jumpPiece(int key, int spaceSelected){
-                                         // need to double check the accuracy of 
-                                         // these comments.... logic works tho
-        if (key - spaceSelected == 18) { // piece is moving down and to the right
+                                         
+        if (key - spaceSelected == 18) { // piece is moving down-left
             pieceMap.remove(key - 9);
             boardSpaces.get(key - 9).setIcon(null);
             return;
         }
-        if (key - spaceSelected == 22) { // piece is moving down and to the left
+        if (key - spaceSelected == 22) { // piece is moving up-left
             pieceMap.remove(key - 11);
             boardSpaces.get(key - 11).setIcon(null);
             return;
         }
-        if (spaceSelected - key == 18) { // piece is moving up and to the right
+        if (spaceSelected - key == 18) { // piece is moving down-right
             pieceMap.remove(key + 9);
             boardSpaces.get(key + 9).setIcon(null);
             return;
         }
-        if (spaceSelected - key == 22) { // piece is moving up and to the left
+        if (spaceSelected - key == 22) { // piece is moving down-right
             pieceMap.remove(key + 11);
             boardSpaces.get(key + 11).setIcon(null);
         }
@@ -405,14 +422,13 @@ public class Checkers implements ActionListener {
         }
         
         if(pieceJumped && jumpAvailable){
-            removeHighlight();
-            highlightSpace(key,YELLOW); //piece that is able to move
-            for(int move : jumpMoves){
-                highlightSpace(move,GREEN); //jump options
-            }
-            this.spaceSelected = key;
-            pieceJumped = false; //clear jump variables, basically resets the
-            jumpAvailable = false; //turn for a fresh takeAction()
+            /*This creates a clean slate so each subsequent move is fresh, but
+            also keeps track of the fact that a move is required*/
+            cleanUp();
+            forceJump = true;
+            pieceJumped = false; 
+            jumpAvailable = false;
+            takeAction(key);
         } else {
             // toggle current player
             if (currentPlayer == 'r'){
@@ -473,6 +489,7 @@ public class Checkers implements ActionListener {
     private void cleanUp(){
         selectionMade = false;
         spaceSelected = -1;
+        forceJump = false;
         removeHighlight();
     }
     
