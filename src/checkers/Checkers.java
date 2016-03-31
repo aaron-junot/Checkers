@@ -4,6 +4,7 @@ import java.awt.*;
 import java.util.HashMap;
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.HashSet;
 import java.util.Map;
 
 /**
@@ -20,6 +21,8 @@ public class Checkers implements ActionListener {
     private JLabel spacer;
     private HashMap<Integer, Piece> pieceMap = new HashMap<>();
     private HashMap<Integer, JButton> boardSpaces = new HashMap<>();
+    private HashSet<Integer> mandatoryJump = new HashSet<>();
+    
     private static final ImageIcon RED_CHECKER = 
                 new ImageIcon("src/images/red.jpg");
     private static final ImageIcon BLACK_CHECKER = 
@@ -39,6 +42,7 @@ public class Checkers implements ActionListener {
     private boolean pieceJumped = false;
     private boolean jumpAvailable = false;
     private boolean forceJump = false;
+    private boolean openingJump = false;
     private int[] legalMoves;
     private int[] jumpMoves;
     
@@ -192,11 +196,11 @@ public class Checkers implements ActionListener {
             } else if (key == spaceSelected && forceJump) {
                 JOptionPane.showMessageDialog(null, "You must continue to "
                         + "jump until no more jumps are available!",
-                        "Mandatory jump required", JOptionPane.ERROR_MESSAGE);
+                        "Mandatory Jump Available", JOptionPane.ERROR_MESSAGE);
             } else {
                 if(isMoveLegal(key)) {
                     movePiece(key, spaceSelected);
-                    } else {
+                } else {
                     JOptionPane.showMessageDialog(null, "A piece has already "
                         + "been selected or an illegal move was chosen. To "
                         + "deselect the piece, click it again. Otherwise, "
@@ -206,7 +210,43 @@ public class Checkers implements ActionListener {
             }
         } else {
             if(pieceMap.containsKey(key) && 
-                    pieceMap.get(key).getColor() == currentPlayer){
+                        pieceMap.get(key).getColor() != currentPlayer){
+                    if(currentPlayer == 'r'){
+                        JOptionPane.showMessageDialog(null, 
+                            "Whoops, not your turn yet. It's red's turn.",
+                            "Wait for your turn!", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(null, 
+                            "Whoops, not your turn yet. It's black's turn.",
+                            "Wait for your turn!", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                    }
+            
+            //If the player has a jump immediately available
+            } else if(openingJump){    
+                if(pieceMap.containsKey(key) && 
+                        pieceMap.get(key).getColor() == currentPlayer &&
+                        mandatoryJump.contains(key)){
+                    
+                    highlightSpace(key, YELLOW);
+                    checkMoves(key);
+                    for(int move : jumpMoves){
+                        highlightSpace(move, GREEN);
+                    }
+                } else if(pieceMap.containsKey(key) &&
+                        pieceMap.get(key).getColor() == currentPlayer){
+                    
+                    JOptionPane.showMessageDialog(null,
+                        "It looks like one of your pieces can jump an "
+                        + "opponent. If you have a jump available, "
+                        + "you must take it.", "Mandatory Jump Available",
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            
+            //If the player has no immediate jump and can choose a piece
+            } else if(pieceMap.containsKey(key) && 
+                                pieceMap.get(key).getColor() == currentPlayer){
                 highlightSpace(key, YELLOW);
                 checkMoves(key);
                 if(forceJump){
@@ -217,17 +257,6 @@ public class Checkers implements ActionListener {
                     for(int move : legalMoves){
                         highlightSpace(move, GREEN);
                     }
-                }
-            } else if(pieceMap.containsKey(key) && 
-                    pieceMap.get(key).getColor() != currentPlayer){
-                if(currentPlayer == 'r'){
-                    JOptionPane.showMessageDialog(null, 
-                        "Whoops, not your turn yet. It's red's turn.",
-                        "Wait for your turn!", JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    JOptionPane.showMessageDialog(null, 
-                        "Whoops, not your turn yet. It's black's turn.",
-                        "Wait for your turn!", JOptionPane.INFORMATION_MESSAGE);
                 }
             }
         }
@@ -370,6 +399,11 @@ public class Checkers implements ActionListener {
         return newKey; 
     }
     
+    /**
+     * Removes piece from board after being jumped
+     * @param key is the map key of the piece to be removed
+     * @param spaceSelected is the map key of the space that needs to be blank
+     */
     private void jumpPiece(int key, int spaceSelected){
                                          
         if (key - spaceSelected == 18) { // piece is moving down-left
@@ -393,6 +427,13 @@ public class Checkers implements ActionListener {
         }
     }
     
+    /**
+     * Moves piece to the indicated key, removes the icon from the old key and
+     * creates an icon on the new space.
+     * @param key the new position of the piece
+     * @param spaceSelected the current position of the piece (and therefore the
+     *                      current position on the board)
+     */
     private void movePiece(int key, int spaceSelected){
         Piece piece = pieceMap.get(spaceSelected);
         JButton toSpace = boardSpaces.get(key);
@@ -423,28 +464,21 @@ public class Checkers implements ActionListener {
         
         if(pieceJumped && jumpAvailable){
             /*This creates a clean slate so each subsequent move is fresh, but
-            also keeps track of the fact that a move is required*/
+            also keeps track of whether that a move is required*/
             cleanUp();
             forceJump = true;
-            pieceJumped = false; 
-            jumpAvailable = false;
             takeAction(key);
         } else {
-            // toggle current player
-            if (currentPlayer == 'r'){
-                currentPlayer = 'b';
-                spacer.setText("<html><br>Your Turn, Black<br><br></html>");
-            } else {
-                currentPlayer = 'r';
-                spacer.setText("<html><br>Your Turn, Red<br><br></html>");
-            }
-            //Ensure jump toggles are switched off
-            pieceJumped = false;
-            jumpAvailable = false;
             cleanUp();
+            changePlayer();
         }
     }
     
+    /**
+     * Promotes the piece
+     * @param piece the piece to be promoted
+     * @param space the space to be repainted with a king icon
+     */
     private void kingMe(Piece piece, JButton space){
         if (piece.getColor() == 'b'){
             space.setIcon(BLACK_KING);
@@ -452,6 +486,53 @@ public class Checkers implements ActionListener {
             space.setIcon(RED_KING);
         }
         piece.promotePiece();        
+    }
+    
+    /**
+     * Called after a player's turn ends. Toggles the currentPlayer variable,
+     * checks the pieceMap entry set to ensure the player still has pieces,
+     * and simultaneously checks to see if the player has any jumps that they
+     * have to make with their move. If the player has no pieces, the game ends
+     * and the board is reset.
+     */
+    private void changePlayer(){
+        int pieceCount = 0;
+
+        // toggle current player
+        if (currentPlayer == 'r'){
+            currentPlayer = 'b';
+            spacer.setText("<html><br>Your turn, black.<br><br></html>");
+        } else {
+            currentPlayer = 'r';
+            spacer.setText("<html><br>Your turn, red.<br><br></html>");
+        }
+        
+        //Check for required jumps at the beginning of the turn
+        for(Map.Entry<Integer, Piece> entry : pieceMap.entrySet()){
+            if (pieceMap.get(entry.getKey()).getColor() == currentPlayer){
+                pieceCount++;
+                checkMoves(entry.getKey());
+                if (jumpAvailable){
+                    openingJump = true;
+                    mandatoryJump.add(entry.getKey());
+                    jumpAvailable = false; //necessary to ensure only elements
+                                           //with jumps are added
+                }      
+            }
+        }
+        
+        //Ends the game and restarts with a fresh board
+        if(pieceCount == 0){
+            if(currentPlayer == 'r'){
+                JOptionPane.showMessageDialog(null, "Black wins!", "Game over!",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null, "Red wins!", "Game over!",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+            cleanUp();
+            setBoard(); 
+        }
     }
     
     /**
@@ -486,10 +567,17 @@ public class Checkers implements ActionListener {
         }
     }
     
+    /**
+     * Prepares for a new move by resetting all of the movement variables
+     */
     private void cleanUp(){
         selectionMade = false;
         spaceSelected = -1;
         forceJump = false;
+        openingJump = false;
+        pieceJumped = false; 
+        jumpAvailable = false;
+        mandatoryJump = new HashSet<>();
         removeHighlight();
     }
     
