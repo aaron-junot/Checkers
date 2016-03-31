@@ -15,12 +15,12 @@ import javax.swing.border.*;
  */
 public class Checkers implements ActionListener {
 
-    private static JFrame frame;
-    private static JPanel primaryPanel;
-    private static JPanel board;
-    private static JLabel spacer;
-    private static HashMap<Integer, Piece> pieceMap = new HashMap<>();
-    private static HashMap<Integer, JButton> boardSpaces = new HashMap<>();
+    private JFrame frame;
+    private JPanel primaryPanel;
+    private JPanel board;
+    private JLabel spacer;
+    private HashMap<Integer, Piece> pieceMap = new HashMap<>();
+    private HashMap<Integer, JButton> boardSpaces = new HashMap<>();
     private static final ImageIcon RED_CHECKER = 
                 new ImageIcon("src/images/red.jpg");
     private static final ImageIcon BLACK_CHECKER = 
@@ -32,11 +32,15 @@ public class Checkers implements ActionListener {
     private static final boolean YELLOW = false;
     private static final boolean GREEN = true;
     
-    private static boolean selectionMade = false;
-    private static int spaceSelected = -1; //-1 is default value
+    private boolean selectionMade = false;
+    private int spaceSelected = -1; //-1 is default value
+    private char currentPlayer = 'r'; //red by default, toggled in play
+    
+    //Movement related variables
+    private boolean pieceJumped = false;
+    private boolean jumpAvailable = false;
     private int[] legalMoves;
-    private static char currentPlayer = 'r'; //red by default, toggled in play
-
+    private int[] jumpMoves;
     
     public Checkers() {
         createGUI();
@@ -188,10 +192,7 @@ public class Checkers implements ActionListener {
             } else {
                 if(isMoveLegal(key)) {
                     movePiece(key, spaceSelected);
-                    removeHighlight();
-                    selectionMade = false;
-                    spaceSelected = -1;
-                } else {
+                    } else {
                     JOptionPane.showMessageDialog(null, "A piece has already "
                         + "been selected or an illegal move was chosen. To "
                         + "deselect the piece, click it again. Otherwise, "
@@ -202,10 +203,10 @@ public class Checkers implements ActionListener {
         } else {
             if(pieceMap.containsKey(key) && 
                     pieceMap.get(key).getColor() == currentPlayer){
-                highlightSpace(key, Checkers.YELLOW);
+                highlightSpace(key, YELLOW);
                 checkMoves(key);
                 for(int move : legalMoves){
-                    highlightSpace(move, Checkers.GREEN);
+                    highlightSpace(move, GREEN);
                 }
             } else if(pieceMap.containsKey(key) && 
                     pieceMap.get(key).getColor() != currentPlayer){
@@ -233,6 +234,7 @@ public class Checkers implements ActionListener {
         int possibilities = (isKing) ? 4 : 2; //if it's a king, there are 4
                                               //move options, otherwise 2
         int[] option = new int[possibilities];
+        jumpMoves = new int[possibilities];
         
         if (isKing){
             option[0] = key - 9; //down left
@@ -257,12 +259,19 @@ public class Checkers implements ActionListener {
                 } else {
                     //Get's the jump landing spot
                     option[i] = checkJump(option[i], color, i, isKing);
-                    
+                    jumpMoves[i] = 1; //1 indicates that a jump was available
+                                      //at this index for a later check
+
                     /*If the jump landing spot contains ANY piece, it's not an
                     option*/
-                    if(pieceMap.containsKey(option[i]))
+                    if(pieceMap.containsKey(option[i])){
                         option[i] = -1;
+                        jumpMoves[i] = -1; //During a later check, -1 will mean
+                                          //that that index was not a jump opt
+                    }
                 }
+            } else { 
+                jumpMoves[i] = -1;
             }
         }
 
@@ -278,6 +287,14 @@ public class Checkers implements ActionListener {
                 (option[i] > 78 && option[i] < 81)){  //
 
                 option[i] = -1; //Essentially a null value
+            }
+        }
+        
+        //Finalize jumpMoves array after option[] was checked for out of bounds
+        for(int i=0;i<possibilities;i++){
+            if(jumpMoves[i] == 1 && option[i] != -1){
+                jumpMoves[i] = option[i]; //set that index to the key value
+                jumpAvailable = true;
             }
         }
         
@@ -375,6 +392,10 @@ public class Checkers implements ActionListener {
         // jump a piece if necessary
         if (Math.abs(key - spaceSelected) > 11) {
             jumpPiece(key, spaceSelected);
+            pieceJumped = true;
+            jumpAvailable = false;
+            //Check for additional jump options
+            checkMoves(key);
         }
         
         // king the piece if necessary
@@ -383,13 +404,28 @@ public class Checkers implements ActionListener {
             kingMe(piece, toSpace);
         }
         
-        // toggle current player
-        if (currentPlayer == 'r'){
-            currentPlayer = 'b';
-            spacer.setText("<html><br>Your Turn, Black<br><br></html>");
+        if(pieceJumped && jumpAvailable){
+            removeHighlight();
+            highlightSpace(key,YELLOW); //piece that is able to move
+            for(int move : jumpMoves){
+                highlightSpace(move,GREEN); //jump options
+            }
+            this.spaceSelected = key;
+            pieceJumped = false; //clear jump variables, basically resets the
+            jumpAvailable = false; //turn for a fresh takeAction()
         } else {
-            currentPlayer = 'r';
-            spacer.setText("<html><br>Your Turn, Red<br><br></html>");
+            // toggle current player
+            if (currentPlayer == 'r'){
+                currentPlayer = 'b';
+                spacer.setText("<html><br>Your Turn, Black<br><br></html>");
+            } else {
+                currentPlayer = 'r';
+                spacer.setText("<html><br>Your Turn, Red<br><br></html>");
+            }
+            //Ensure jump toggles are switched off
+            pieceJumped = false;
+            jumpAvailable = false;
+            cleanUp();
         }
     }
     
@@ -415,7 +451,7 @@ public class Checkers implements ActionListener {
         if(key == -1)
             return;
         
-        if(type == Checkers.YELLOW){
+        if(type == YELLOW){
             boardSpaces.get(key).setBorder(
             BorderFactory.createLineBorder(Color.yellow, 3));
                 
@@ -433,7 +469,13 @@ public class Checkers implements ActionListener {
             boardSpaces.get(entry.getKey()).setBorder(null);
         }
     }
-   
+    
+    private void cleanUp(){
+        selectionMade = false;
+        spaceSelected = -1;
+        removeHighlight();
+    }
+    
     /**
      * @param args the command line arguments
      */
