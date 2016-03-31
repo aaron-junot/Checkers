@@ -119,7 +119,7 @@ public class Checkers implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e){
         int key = Integer.parseInt(e.getActionCommand());
-        selectionMade(key);
+        takeAction(key);
     }
     
     
@@ -178,7 +178,7 @@ public class Checkers implements ActionListener {
      * it is to highlight spaces or call the movement method(s)
      * @param key is the selected space's HashMap key.
      */
-    private void selectionMade(int key){
+    private void takeAction(int key){
         
         if(selectionMade){
             if(key == spaceSelected){
@@ -200,11 +200,23 @@ public class Checkers implements ActionListener {
                 }
             }
         } else {
-            if(pieceMap.containsKey(key) && pieceMap.get(key).getColor() == currentPlayer){
+            if(pieceMap.containsKey(key) && 
+                    pieceMap.get(key).getColor() == currentPlayer){
                 highlightSpace(key, Checkers.YELLOW);
                 checkMoves(key);
                 for(int move : legalMoves){
                     highlightSpace(move, Checkers.GREEN);
+                }
+            } else if(pieceMap.containsKey(key) && 
+                    pieceMap.get(key).getColor() != currentPlayer){
+                if(currentPlayer == 'r'){
+                    JOptionPane.showMessageDialog(null, 
+                        "Whoops, not your turn yet. It's red's turn.",
+                        "Wait for your turn!", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(null, 
+                        "Whoops, not your turn yet. It's black's turn.",
+                        "Wait for your turn!", JOptionPane.INFORMATION_MESSAGE);
                 }
             }
         }
@@ -244,7 +256,7 @@ public class Checkers implements ActionListener {
                     option[i] = -1; //Not a move option
                 } else {
                     //Get's the jump landing spot
-                    option[i] = checkJump(option[i], color, i);
+                    option[i] = checkJump(option[i], color, i, isKing);
                     
                     /*If the jump landing spot contains ANY piece, it's not an
                     option*/
@@ -293,12 +305,12 @@ public class Checkers implements ActionListener {
      *          direction
      * @return int key for the landing space of a jump.
      */
-    private int checkJump(int key, char color, int i){
+    private int checkJump(int key, char color, int i, boolean isKing){
         int direction = i; //0=down-left, 1=d-right, 2=up-left, 3=u-right 
         int newKey = -1;
         
         //Adjust direction if color is black
-        if(color == 'b')
+        if(color == 'b' && !isKing)
             direction = i + 2;
         
         switch(direction){
