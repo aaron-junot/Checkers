@@ -18,12 +18,19 @@ public class Checkers implements ActionListener {
     private static JFrame frame;
     private static JPanel primaryPanel;
     private static JPanel board;
+    private static JLabel spacer;
     private static HashMap<Integer, Piece> pieceMap = new HashMap<>();
     private static HashMap<Integer, JButton> boardSpaces = new HashMap<>();
     private static final ImageIcon RED_CHECKER = 
                 new ImageIcon("src/images/red.jpg");
     private static final ImageIcon BLACK_CHECKER = 
                 new ImageIcon("src/images/black.jpg");
+    private static final ImageIcon RED_KING = 
+                new ImageIcon("src/images/redKing.jpg");
+    private static final ImageIcon BLACK_KING = 
+                new ImageIcon("src/images/blackKing.jpg");
+    private static final boolean YELLOW = false;
+    private static final boolean GREEN = true;
     
     private static boolean selectionMade = false;
     private static int spaceSelected = -1; //-1 is default value
@@ -43,12 +50,13 @@ public class Checkers implements ActionListener {
         frame = new JFrame("Checkers");
         primaryPanel = new JPanel(new BorderLayout());
         
-        JLabel spacer = new JLabel("");
-        spacer.setPreferredSize(new Dimension(67, 67));
+        spacer = new JLabel("<html><br>Your Turn, Red<br><br></html>");
+        spacer.setHorizontalAlignment(JLabel.CENTER);
+        spacer.setFont(new Font("Courier", Font.BOLD, 22));
         primaryPanel.add(spacer, BorderLayout.NORTH);
         
         JPanel player1 = new JPanel();
-        player1.add(new JLabel("Player 1"));
+        player1.add(new JLabel("Player: Red"));
         primaryPanel.add(player1, BorderLayout.LINE_START);
         
         // size is the size of each space on the board
@@ -91,7 +99,7 @@ public class Checkers implements ActionListener {
         primaryPanel.add(board, BorderLayout.CENTER);
         
         JPanel player2 = new JPanel();
-        player2.add(new JLabel("Player 2"));
+        player2.add(new JLabel("Player: Black"));
         primaryPanel.add(player2, BorderLayout.LINE_END);
         
         ImageIcon menuIcon = new ImageIcon("src/images/gear.png");
@@ -112,8 +120,6 @@ public class Checkers implements ActionListener {
     public void actionPerformed(ActionEvent e){
         int key = Integer.parseInt(e.getActionCommand());
         selectionMade(key);
-        
-        System.out.println(key);//GET RID OF THIS BEFORE PUBLISHING//
     }
     
     
@@ -180,9 +186,8 @@ public class Checkers implements ActionListener {
                 selectionMade = false;
                 spaceSelected = -1; //return to default value
             } else {
-                
                 if(isMoveLegal(key)) {
-                    //TODO call movement function methods here//
+                    movePiece(key, spaceSelected);
                     removeHighlight();
                     selectionMade = false;
                     spaceSelected = -1;
@@ -195,13 +200,11 @@ public class Checkers implements ActionListener {
                 }
             }
         } else {
-/////////////THIS WILL NEED TO BE UPDATED TO CHECK FOR WHOSE TURN IT IS////////
-///////////  && pieceMap.get(key).getColor() == currentPlayer  ////////////////
-            if(pieceMap.containsKey(key)){
-                highlightSpace(key,0);
+            if(pieceMap.containsKey(key) && pieceMap.get(key).getColor() == currentPlayer){
+                highlightSpace(key, Checkers.YELLOW);
                 checkMoves(key);
                 for(int move : legalMoves){
-                    highlightSpace(move, 1);
+                    highlightSpace(move, Checkers.GREEN);
                 }
             }
         }
@@ -320,38 +323,89 @@ public class Checkers implements ActionListener {
         return newKey; 
     }
     
-    private void jumpPiece(){
-        //TODO add parameter requirements, logic for removing piece from map
-        //and repainting board
+    private void jumpPiece(int key, int spaceSelected){
+                                         // need to double check the accuracy of 
+                                         // these comments.... logic works tho
+        if (key - spaceSelected == 18) { // piece is moving down and to the right
+            pieceMap.remove(key - 9);
+            boardSpaces.get(key - 9).setIcon(null);
+            return;
+        }
+        if (key - spaceSelected == 22) { // piece is moving down and to the left
+            pieceMap.remove(key - 11);
+            boardSpaces.get(key - 11).setIcon(null);
+            return;
+        }
+        if (spaceSelected - key == 18) { // piece is moving up and to the right
+            pieceMap.remove(key + 9);
+            boardSpaces.get(key + 9).setIcon(null);
+            return;
+        }
+        if (spaceSelected - key == 22) { // piece is moving up and to the left
+            pieceMap.remove(key + 11);
+            boardSpaces.get(key + 11).setIcon(null);
+        }
     }
     
-    private void movePiece(){
-        //TODO add parameter requirements, logic for moving the piece inside
-        //the map and repainting board
+    private void movePiece(int key, int spaceSelected){
+        Piece piece = pieceMap.get(spaceSelected);
+        JButton toSpace = boardSpaces.get(key);
+        JButton fromSpace = boardSpaces.get(spaceSelected);
+        
+        // move the piece in the HashMap
+        pieceMap.put(key, piece);
+        pieceMap.remove(spaceSelected);
+        
+        // move the piece on the GUI        
+        toSpace.setIcon(fromSpace.getIcon());
+        fromSpace.setIcon(null);
+        
+        // jump a piece if necessary
+        if (Math.abs(key - spaceSelected) > 11) {
+            jumpPiece(key, spaceSelected);
+        }
+        
+        // king the piece if necessary
+        if ((piece.getColor() == 'r' && key % 10 == 8) ||
+                piece.getColor() == 'b' && key % 10 == 1) {
+            kingMe(piece, toSpace);
+        }
+        
+        // toggle current player
+        if (currentPlayer == 'r'){
+            currentPlayer = 'b';
+            spacer.setText("<html><br>Your Turn, Black<br><br></html>");
+        } else {
+            currentPlayer = 'r';
+            spacer.setText("<html><br>Your Turn, Red<br><br></html>");
+        }
+    }
+    
+    private void kingMe(Piece piece, JButton space){
+        if (piece.getColor() == 'b'){
+            space.setIcon(BLACK_KING);
+        } else {
+            space.setIcon(RED_KING);
+        }
+        piece.promotePiece();        
     }
     
     /**
      * Method highlights specified buttons based on user selection or move
      * options.
      * @param key is the map key for the corresponding button
-     * @param type determines the color of highlight applied. 0 denotes a user
-     *             selection (yellow), 1 denotes legal move options (green)
+     * @param type determines the color of highlight applied. Checkers.YELLOW
+     *             will highlight yellow, Checkers.GREEN will highlight green
      */
-    private void highlightSpace(int key, int type){
-        
-        if(!(type == 0 || type == 1)){
-            throw new IllegalArgumentException("Type must be either"
-                    + " 0 or 1. 0 is for user selection, 1 is for legal "
-                    + "move option highlight.");
-        }
-        
+    private void highlightSpace(int key, boolean type){
+                
         //Check for "null" entry
         if(key == -1)
             return;
         
-        if(type == 0){
+        if(type == Checkers.YELLOW){
             boardSpaces.get(key).setBorder(
-            BorderFactory.createLineBorder(Color.YELLOW, 3));
+            BorderFactory.createLineBorder(Color.yellow, 3));
                 
             selectionMade = true;
             spaceSelected = key;
@@ -364,8 +418,7 @@ public class Checkers implements ActionListener {
     
     private void removeHighlight(){
         for(Map.Entry<Integer, JButton> entry : boardSpaces.entrySet()){
-            boardSpaces.get(entry.getKey()).setBorder(
-                    BorderFactory.createEmptyBorder());
+            boardSpaces.get(entry.getKey()).setBorder(null);
         }
     }
    
