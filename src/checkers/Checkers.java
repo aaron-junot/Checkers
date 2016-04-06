@@ -6,6 +6,7 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.util.HashSet;
 import java.util.Map;
+import javax.swing.border.Border;
 
 /**
  * This is the main class for the game of Checkers. This class draws the GUI,
@@ -15,14 +16,25 @@ import java.util.Map;
  */
 public class Checkers implements ActionListener {
 
+    // GUI class variables    
     private JFrame frame;
     private JPanel primaryPanel;
     private JPanel board;
     private JLabel spacer;
+    private JButton playerTurn;
+    private Color redColor = new Color(200, 0, 0);
+    private Border redTurnBorder = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(redColor, 8), 
+            BorderFactory.createLineBorder(Color.WHITE, 1));
+    private Border blackTurnBorder = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.BLACK, 8), 
+            BorderFactory.createLineBorder(Color.WHITE, 1));
+    
     private HashMap<Integer, Piece> pieceMap = new HashMap<>();
     private HashMap<Integer, JButton> boardSpaces = new HashMap<>();
     private HashSet<Integer> mandatoryJump = new HashSet<>();
     
+    // Image class variables
     private static final ImageIcon RED_CHECKER = 
                 new ImageIcon("src/images/red.jpg");
     private static final ImageIcon BLACK_CHECKER = 
@@ -31,6 +43,12 @@ public class Checkers implements ActionListener {
                 new ImageIcon("src/images/redKing.jpg");
     private static final ImageIcon BLACK_KING = 
                 new ImageIcon("src/images/blackKing.jpg");
+    private static final ImageIcon BACKGROUND_HORIZONTAL = 
+                new ImageIcon("src/images/sandstoneHorizontal.jpg");
+    private static final ImageIcon BACKGROUND_VERTICAL = 
+                new ImageIcon("src/images/sandstoneVertical.jpg");
+    
+    // Constants for use with the highlightSpace() method
     private static final boolean YELLOW = false;
     private static final boolean GREEN = true;
     
@@ -46,6 +64,7 @@ public class Checkers implements ActionListener {
     private int[] legalMoves;
     private int[] jumpMoves;
     
+    // Constructor
     public Checkers() {
         createGUI();
         setBoard();
@@ -56,20 +75,58 @@ public class Checkers implements ActionListener {
      */
     private void createGUI() {
         frame = new JFrame("Checkers");
-        primaryPanel = new JPanel(new BorderLayout());
+        primaryPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
         
-        spacer = new JLabel("<html><br>Your Turn, Red<br><br></html>");
-        spacer.setHorizontalAlignment(JLabel.CENTER);
-        spacer.setFont(new Font("Courier", Font.BOLD, 22));
-        primaryPanel.add(spacer, BorderLayout.NORTH);
+        c.gridwidth = 3;
+        c.gridheight = 1;
+        c.gridy = 0;
+        c.gridx = 0;
+        c.fill = GridBagConstraints.BOTH;
         
-        JPanel player1 = new JPanel();
-        player1.add(new JLabel("Player: Red"));
-        primaryPanel.add(player1, BorderLayout.LINE_START);
+        spacer = new JLabel(BACKGROUND_HORIZONTAL){
+            @Override
+            public void paintComponent (Graphics g) {
+                super.paintComponent (g);
+                g.drawImage (BACKGROUND_HORIZONTAL.getImage(), 
+                        0, 0, getWidth (), getHeight (), null);
+            }
+        };
+        spacer.setLayout(new FlowLayout());
+        playerTurn = new JButton("<html>Your Turn, Red<br></html>");
+        playerTurn.setHorizontalTextPosition(JLabel.CENTER);
+        playerTurn.setVerticalTextPosition(JLabel.CENTER);
+        playerTurn.setHorizontalAlignment(JLabel.CENTER);
+        playerTurn.setVerticalAlignment(JLabel.CENTER);
+        playerTurn.setForeground(Color.BLACK);
+        spacer.setOpaque(true);
+        playerTurn.setOpaque(true);
+        playerTurn.setFont(new Font("Serif", Font.BOLD, 34));
+        playerTurn.setBorder(null);
+        spacer.add(playerTurn);
+        primaryPanel.add(spacer, c);
+        
+       
+        JLabel playerOne = new JLabel(BACKGROUND_VERTICAL){
+            @Override
+            public void paintComponent (Graphics g) {
+                super.paintComponent (g);
+                g.drawImage (BACKGROUND_VERTICAL.getImage(), 
+                        0, 0, getWidth (), getHeight (), null);
+            }
+        };
+        playerOne.setBorder(null);        
+        playerOne.setForeground(Color.WHITE);
+        c.gridwidth = 1;
+        c.gridheight = 1;
+        c.gridx = 0;
+        c.gridy = 1;
+        primaryPanel.add(playerOne, c);
         
         // size is the size of each space on the board
         Dimension size = new Dimension(70, 70);
         board = new JPanel(new GridLayout(8, 8));
+        board.setBorder(redTurnBorder);
         
         // creates all the spaces and add them to the board
         for (int i = 1; i < 9; i++) {
@@ -81,7 +138,7 @@ public class Checkers implements ActionListener {
                     count++;
                 }
                 if (count % 2 == 0) {
-                    space.setBackground(Color.RED);
+                    space.setBackground(redColor);
                 } else {
                     space.setBackground(Color.BLACK);
                 }
@@ -104,18 +161,42 @@ public class Checkers implements ActionListener {
                 board.add(space);
             }
         }
-        primaryPanel.add(board, BorderLayout.CENTER);
+        c.gridx = 1;
+        primaryPanel.add(board, c);
         
-        JPanel player2 = new JPanel();
-        player2.add(new JLabel("Player: Black"));
-        primaryPanel.add(player2, BorderLayout.LINE_END);
+        JLabel playerTwo = new JLabel(BACKGROUND_VERTICAL){
+            @Override
+            public void paintComponent (Graphics g) {
+                super.paintComponent (g);
+                g.drawImage (BACKGROUND_VERTICAL.getImage(), 
+                        0, 0, getWidth (), getHeight (), null);
+            }
+        };
+        playerTwo.setForeground(Color.WHITE);
+        c.gridx = 2;
+        primaryPanel.add(playerTwo, c);
         
         ImageIcon menuIcon = new ImageIcon("src/images/gear.png");
         JButton menuButton = new JButton(menuIcon);
         menuButton.setBorder(null);
-        menuButton.setContentAreaFilled(false);
-        menuButton.setHorizontalAlignment(SwingConstants.RIGHT);
-        primaryPanel.add(menuButton, BorderLayout.PAGE_END);
+        menuButton.setContentAreaFilled(true);
+       
+        JLabel bottom = new JLabel(BACKGROUND_HORIZONTAL){
+            @Override
+            public void paintComponent (Graphics g) {
+                super.paintComponent (g);
+                g.drawImage (BACKGROUND_HORIZONTAL.getImage(), 
+                        0, 0, getWidth (), getHeight (), null);
+            }
+        };
+        bottom.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        bottom.add(menuButton);
+        bottom.revalidate();
+        bottom.repaint();
+        c.gridwidth = 3;
+        c.gridx = 0;
+        c.gridy = 2;
+        primaryPanel.add(bottom, c);
         
         frame.add(primaryPanel);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -501,11 +582,13 @@ public class Checkers implements ActionListener {
         // toggle current player
         if (currentPlayer == 'r'){
             currentPlayer = 'b';
-            spacer.setText("<html><br>Your turn, black.<br><br></html>");
-        } else {
+            board.setBorder(blackTurnBorder);
+            playerTurn.setText("<html>Your Turn, Black<br></html>");
+         } else {
             currentPlayer = 'r';
-            spacer.setText("<html><br>Your turn, red.<br><br></html>");
-        }
+            board.setBorder(redTurnBorder);
+            playerTurn.setText("<html>Your Turn, Red<br></html>");
+         }
         
         //Check for required jumps at the beginning of the turn
         for(Map.Entry<Integer, Piece> entry : pieceMap.entrySet()){
