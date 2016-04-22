@@ -29,8 +29,16 @@ public class Piece {
      * promotePiece() changes the piece to a king, which allows the piece to 
      * move backwards.
      */
-    private void promotePiece(){
+    public void promotePiece(){
         isKing = true;
+    }
+    
+    /**
+     * demotePiece() changes the piece from a king. Used when a player uses 
+     * the undo function.
+     */
+    public void demotePiece(){
+        isKing = false;
     }
     
     /**
