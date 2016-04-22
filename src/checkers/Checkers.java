@@ -4,6 +4,7 @@ import java.awt.*;
 import java.util.HashMap;
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Map;
 import javax.swing.border.Border;
@@ -22,17 +23,19 @@ public class Checkers implements ActionListener {
     private JPanel board;
     private JLabel spacer;
     private JButton playerTurn;
-    private Color redColor = new Color(200, 0, 0);
-    private Border redTurnBorder = BorderFactory.createCompoundBorder(
+    private JButton undoButton;
+    private final Color redColor = new Color(200, 0, 0);
+    private final Border redTurnBorder = BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(redColor, 8), 
             BorderFactory.createLineBorder(Color.WHITE, 1));
-    private Border blackTurnBorder = BorderFactory.createCompoundBorder(
+    private final Border blackTurnBorder = BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.BLACK, 8), 
             BorderFactory.createLineBorder(Color.WHITE, 1));
     
     private HashMap<Integer, Piece> pieceMap = new HashMap<>();
-    private HashMap<Integer, JButton> boardSpaces = new HashMap<>();
+    private final HashMap<Integer, JButton> boardSpaces = new HashMap<>();
     private HashSet<Integer> mandatoryJump = new HashSet<>();
+    private final ArrayDeque<Move> moveHistory = new ArrayDeque<>();
     
     // Image class variables
     private static final ImageIcon RED_CHECKER = 
@@ -68,6 +71,18 @@ public class Checkers implements ActionListener {
     public Checkers() {
         createGUI();
         setBoard();
+    }
+    
+    // nested private class for storing moves for undo capability
+    private final class Move {        
+        char player;
+        int from;
+        int to;
+        boolean pieceJumped;
+        boolean pieceKinged;
+        boolean availableJump;
+        boolean jumpForced;
+        Icon jumpedIcon;
     }
 
     /**
@@ -180,7 +195,24 @@ public class Checkers implements ActionListener {
         JButton menuButton = new JButton(menuIcon);
         menuButton.setBorder(null);
         menuButton.setContentAreaFilled(true);
+        menuButton.setActionCommand("menu");
+        menuButton.addActionListener(this);
        
+        JButton invisibleUndoButton = new JButton();
+        Action undoAction = new AbstractAction("") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                undoMove();
+            }
+        };
+        String key = "Undo";
+        invisibleUndoButton.setAction(undoAction);
+        undoAction.putValue(Action.MNEMONIC_KEY, KeyEvent.VK_Z);
+        invisibleUndoButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK), 
+                key);
+        invisibleUndoButton.getActionMap().put(key, undoAction);
+        
         JLabel bottom = new JLabel(BACKGROUND_HORIZONTAL){
             @Override
             public void paintComponent (Graphics g) {
@@ -189,7 +221,11 @@ public class Checkers implements ActionListener {
                         0, 0, getWidth (), getHeight (), null);
             }
         };
-        bottom.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        bottom.setLayout(new FlowLayout(FlowLayout.RIGHT));        
+        bottom.add(invisibleUndoButton); 
+        invisibleUndoButton.setOpaque(false);
+        invisibleUndoButton.setContentAreaFilled(false);
+        invisibleUndoButton.setBorderPainted(false);
         bottom.add(menuButton);
         bottom.revalidate();
         bottom.repaint();
@@ -207,8 +243,12 @@ public class Checkers implements ActionListener {
     
     @Override
     public void actionPerformed(ActionEvent e){
-        int key = Integer.parseInt(e.getActionCommand());
-        takeAction(key);
+        if (e.getActionCommand().equals("menu")){
+            displaySettings();
+        } else {
+            int key = Integer.parseInt(e.getActionCommand());
+            takeAction(key);
+        }
     }
     
     
@@ -260,6 +300,9 @@ public class Checkers implements ActionListener {
         }
         // clears out HashMap containing the location of each piece
         pieceMap = new HashMap<>();
+        
+        // clear out the move history
+        moveHistory.clear();
     }
     
     /**
@@ -485,27 +528,30 @@ public class Checkers implements ActionListener {
      * @param key is the map key of the piece to be removed
      * @param spaceSelected is the map key of the space that needs to be blank
      */
-    private void jumpPiece(int key, int spaceSelected){
-                                         
+    private Icon jumpPiece(int key, int spaceSelected){
+        Icon jumpedIcon = null;                                 
         if (key - spaceSelected == 18) { // piece is moving down-left
             pieceMap.remove(key - 9);
+            jumpedIcon = boardSpaces.get(key - 9).getIcon(); 
             boardSpaces.get(key - 9).setIcon(null);
-            return;
         }
         if (key - spaceSelected == 22) { // piece is moving up-left
             pieceMap.remove(key - 11);
+            jumpedIcon = boardSpaces.get(key - 11).getIcon(); 
             boardSpaces.get(key - 11).setIcon(null);
-            return;
         }
         if (spaceSelected - key == 18) { // piece is moving down-right
             pieceMap.remove(key + 9);
+            jumpedIcon = boardSpaces.get(key + 9).getIcon(); 
             boardSpaces.get(key + 9).setIcon(null);
-            return;
         }
         if (spaceSelected - key == 22) { // piece is moving down-right
             pieceMap.remove(key + 11);
+            jumpedIcon = boardSpaces.get(key + 11).getIcon(); 
             boardSpaces.get(key + 11).setIcon(null);
         }
+        
+        return jumpedIcon;
     }
     
     /**
@@ -516,6 +562,12 @@ public class Checkers implements ActionListener {
      *                      current position on the board)
      */
     private void movePiece(int key, int spaceSelected){
+        // capture info about this move to store in the moveHistory ArrayDeque
+        Move thisMove = new Move();
+        thisMove.from = spaceSelected;
+        thisMove.to = key;
+        thisMove.player = currentPlayer;
+        
         Piece piece = pieceMap.get(spaceSelected);
         JButton toSpace = boardSpaces.get(key);
         JButton fromSpace = boardSpaces.get(spaceSelected);
@@ -529,8 +581,9 @@ public class Checkers implements ActionListener {
         fromSpace.setIcon(null);
         
         // jump a piece if necessary
-        if (Math.abs(key - spaceSelected) > 11) {
-            jumpPiece(key, spaceSelected);
+        if (Math.abs(key - spaceSelected) > 11) {            
+            thisMove.jumpedIcon = jumpPiece(key, spaceSelected);
+            thisMove.pieceJumped = true; 
             pieceJumped = true;
             jumpAvailable = false;
             //Check for additional jump options
@@ -541,7 +594,10 @@ public class Checkers implements ActionListener {
         if ((piece.getColor() == 'r' && key % 10 == 8) ||
                 piece.getColor() == 'b' && key % 10 == 1) {
             kingMe(piece, toSpace);
+            thisMove.pieceKinged = true;
         }
+        
+        moveHistory.push(thisMove);
         
         if(pieceJumped && jumpAvailable){
             /*This creates a clean slate so each subsequent move is fresh, but
@@ -551,7 +607,7 @@ public class Checkers implements ActionListener {
             takeAction(key);
         } else {
             cleanUp();
-            changePlayer();
+            changePlayer(false);
         }
     }
     
@@ -575,20 +631,24 @@ public class Checkers implements ActionListener {
      * and simultaneously checks to see if the player has any jumps that they
      * have to make with their move. If the player has no pieces, the game ends
      * and the board is reset.
+     * @param undo is true if the player selects undo during a multi-jump
+     *        sequence, skipping the change player phase because the player is
+     *        already selecting a move.
      */
-    private void changePlayer(){
+    private void changePlayer(boolean undo){
         int pieceCount = 0;
 
-        // toggle current player
-        if (currentPlayer == 'r'){
-            currentPlayer = 'b';
-            board.setBorder(blackTurnBorder);
-            playerTurn.setText("<html>Your Turn, Black<br></html>");
-         } else {
-            currentPlayer = 'r';
-            board.setBorder(redTurnBorder);
-            playerTurn.setText("<html>Your Turn, Red<br></html>");
-         }
+        if(!undo){
+            if (currentPlayer == 'r'){
+                currentPlayer = 'b';
+                board.setBorder(blackTurnBorder);
+                playerTurn.setText("<html>Your turn, Black.<br></html>");
+             } else {
+                currentPlayer = 'r';
+                board.setBorder(redTurnBorder);
+                playerTurn.setText("<html>Your turn, Red.<br></html>");
+            }
+        }
         
         //Check for required jumps at the beginning of the turn
         for(Map.Entry<Integer, Piece> entry : pieceMap.entrySet()){
@@ -662,6 +722,130 @@ public class Checkers implements ActionListener {
         jumpAvailable = false;
         mandatoryJump = new HashSet<>();
         removeHighlight();
+    }
+    
+    private void displaySettings() {
+        JDialog dialog = new JDialog(frame, "Settings");
+        JLabel label = new JLabel("Settings");
+        label.setHorizontalAlignment(JLabel.LEFT);
+        JButton closeButton = new JButton("Close");
+        
+        closeButton.addActionListener((ActionEvent e) -> {
+            dialog.setVisible(false);
+            dialog.dispose();
+        });
+        
+        undoButton = new JButton("Undo Last Move");
+        if (moveHistory.isEmpty()){
+            undoButton.setEnabled(false);
+        }
+        
+        undoButton.addActionListener((ActionEvent e) -> {
+            undoMove();
+        });
+        
+        JPanel settingsPanel = new JPanel();
+        settingsPanel.add(undoButton); 
+        JPanel closePanel = new JPanel();
+        closePanel.add(closeButton);
+        JPanel contentPane = new JPanel(new BorderLayout());
+        contentPane.add(label, BorderLayout.PAGE_START);
+        contentPane.add(settingsPanel, BorderLayout.CENTER);
+        contentPane.add(closePanel, BorderLayout.PAGE_END);
+        contentPane.setOpaque(true);
+        dialog.setContentPane(contentPane);
+        
+        dialog.setSize(new Dimension(400, 300));
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
+    }
+    
+    private void undoMove(){
+        if (moveHistory.isEmpty()){
+            return;
+        }
+        // get the last move
+        Move lastMove = moveHistory.pop();
+                
+        Piece piece = pieceMap.get(lastMove.to);
+        JButton toSpace = boardSpaces.get(lastMove.from);
+        JButton fromSpace = boardSpaces.get(lastMove.to);
+        
+        // move the piece in the pieceMap
+        pieceMap.put(lastMove.from, piece);
+        pieceMap.remove(lastMove.to);
+        
+        // move the piece on the GUI        
+        toSpace.setIcon(fromSpace.getIcon());
+        fromSpace.setIcon(null);        
+              
+        // unjump a piece if necessary
+        if (lastMove.pieceJumped) {
+            Piece jumpedPiece;
+            if (lastMove.player == 'r'){
+                jumpedPiece = new Piece('b');
+            } else {
+                jumpedPiece = new Piece('r');
+            }
+            if (lastMove.jumpedIcon == RED_KING || 
+                    lastMove.jumpedIcon == BLACK_KING){
+                jumpedPiece.promotePiece();
+            }
+            if (lastMove.to - lastMove.from == 18) { 
+                pieceMap.put(lastMove.to - 9, jumpedPiece);
+                boardSpaces.get(lastMove.to - 9).setIcon(lastMove.jumpedIcon);
+            }
+            if (lastMove.to - lastMove.from == 22) { 
+                pieceMap.put(lastMove.to - 11, jumpedPiece);
+                boardSpaces.get(lastMove.to - 11).setIcon(lastMove.jumpedIcon);
+            }
+            if (lastMove.from - lastMove.to == 18) { 
+                pieceMap.put(lastMove.to + 9, jumpedPiece);
+                boardSpaces.get(lastMove.to + 9).setIcon(lastMove.jumpedIcon);
+            }
+            if (lastMove.from - lastMove.to == 22) { 
+                pieceMap.put(lastMove.to + 11, jumpedPiece);
+                boardSpaces.get(lastMove.to + 11).setIcon(lastMove.jumpedIcon);
+            }
+        } 
+        
+        // unking the piece if necessary
+        if (lastMove.pieceKinged) {
+            if (piece.getColor() == 'b'){
+                toSpace.setIcon(BLACK_CHECKER);
+            } else {
+                toSpace.setIcon(RED_CHECKER);
+            }
+            piece.demotePiece();
+        }
+                               
+        if (undoButton != null && moveHistory.isEmpty()){
+            undoButton.setEnabled(false);
+        }
+        
+        //Take care of highlights and forced jumps
+        cleanUp();
+        if(lastMove.player != currentPlayer){
+            changePlayer(false);
+        }
+        
+        //Reset the selection to the piece that was just reverted
+        takeAction(lastMove.from);
+        
+        //Get the move prior to the undo
+        Move prior = moveHistory.pop();
+        
+        if(lastMove.pieceJumped && prior.player == currentPlayer){
+            forceJump = true;
+            selectionMade = true;
+            spaceSelected = lastMove.from;
+            //changePlayer(true);
+        } else if(lastMove.pieceJumped && prior.player != currentPlayer){
+            changePlayer(true);
+        }
+        
+        //Replace the prior move to avoid a null pointer if multiple undo select
+        moveHistory.push(prior);
     }
     
     /**
