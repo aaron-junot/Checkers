@@ -1,12 +1,9 @@
 package checkers;
 
 import java.awt.*;
-import java.util.HashMap;
+import java.util.*;
 import javax.swing.*;
 import java.awt.event.*;
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Map;
 import javax.swing.border.Border;
 
 /**
@@ -19,10 +16,8 @@ public class Checkers implements ActionListener {
 
     // GUI class variables    
     private JFrame frame;
-    private JPanel primaryPanel;
-    private JPanel board;
-    private JLabel spacer;
-    private JButton playerTurn;
+    private JPanel primaryPanel, board, spacer;
+    private JLabel playerTurn;
     private JButton undoButton;
     private final Color redColor = new Color(200, 0, 0);
     private final Border redTurnBorder = BorderFactory.createCompoundBorder(
@@ -55,17 +50,15 @@ public class Checkers implements ActionListener {
     private static final boolean YELLOW = false;
     private static final boolean GREEN = true;
     
+    //Turn and input variables
     private boolean selectionMade = false;
     private int spaceSelected = -1; //-1 is default value
     private char currentPlayer = 'r'; //red by default, toggled in play
     
     //Movement related variables
-    private boolean pieceJumped = false;
-    private boolean jumpAvailable = false;
-    private boolean forceJump = false;
-    private boolean openingJump = false;
-    private int[] legalMoves;
-    private int[] jumpMoves;
+    private boolean pieceJumped = false, jumpAvailable = false,
+            forceJump = false, openingJump = false;
+    private int[] legalMoves, jumpMoves;
     
     // Constructor
     public Checkers() {
@@ -99,7 +92,7 @@ public class Checkers implements ActionListener {
         c.gridx = 0;
         c.fill = GridBagConstraints.BOTH;
         
-        spacer = new JLabel(BACKGROUND_HORIZONTAL){
+        spacer = new JPanel(){
             @Override
             public void paintComponent (Graphics g) {
                 super.paintComponent (g);
@@ -108,19 +101,22 @@ public class Checkers implements ActionListener {
             }
         };
         spacer.setLayout(new FlowLayout());
-        playerTurn = new JButton("<html>Your Turn, Red<br></html>");
+        spacer.setOpaque(true);
+        
+        playerTurn = new JLabel("Your turn, Red");
+        playerTurn.setBackground(Color.LIGHT_GRAY);
+        playerTurn.setOpaque(true);
         playerTurn.setHorizontalTextPosition(JLabel.CENTER);
         playerTurn.setVerticalTextPosition(JLabel.CENTER);
         playerTurn.setHorizontalAlignment(JLabel.CENTER);
         playerTurn.setVerticalAlignment(JLabel.CENTER);
         playerTurn.setForeground(Color.BLACK);
-        spacer.setOpaque(true);
-        playerTurn.setOpaque(true);
         playerTurn.setFont(new Font("Serif", Font.BOLD, 34));
         playerTurn.setBorder(null);
-        spacer.add(playerTurn);
-        primaryPanel.add(spacer, c);
         
+        spacer.add(playerTurn);
+        
+        primaryPanel.add(spacer, c);
        
         JLabel playerOne = new JLabel(BACKGROUND_VERTICAL){
             @Override
@@ -174,7 +170,7 @@ public class Checkers implements ActionListener {
                 boardSpaces.put(keyValue, space);
                 
                 board.add(space);
-            }
+            } 
         }
         c.gridx = 1;
         primaryPanel.add(board, c);
@@ -567,6 +563,8 @@ public class Checkers implements ActionListener {
         thisMove.from = spaceSelected;
         thisMove.to = key;
         thisMove.player = currentPlayer;
+        //thisMove.availableJump = jumpAvailable;
+        //thisMove.jumpForced = forceJump;
         
         Piece piece = pieceMap.get(spaceSelected);
         JButton toSpace = boardSpaces.get(key);
@@ -607,7 +605,7 @@ public class Checkers implements ActionListener {
             takeAction(key);
         } else {
             cleanUp();
-            changePlayer(false);
+            changePlayer();
         }
     }
     
@@ -626,19 +624,9 @@ public class Checkers implements ActionListener {
     }
     
     /**
-     * Called after a player's turn ends. Toggles the currentPlayer variable,
-     * checks the pieceMap entry set to ensure the player still has pieces,
-     * and simultaneously checks to see if the player has any jumps that they
-     * have to make with their move. If the player has no pieces, the game ends
-     * and the board is reset.
-     * @param undo is true if the player selects undo during a multi-jump
-     *        sequence, skipping the change player phase because the player is
-     *        already selecting a move.
+     * Called after a player's turn ends. Toggles the currentPlayer variable.
      */
-    private void changePlayer(boolean undo){
-        int pieceCount = 0;
-
-        if(!undo){
+    private void changePlayer(){
             if (currentPlayer == 'r'){
                 currentPlayer = 'b';
                 board.setBorder(blackTurnBorder);
@@ -648,13 +636,33 @@ public class Checkers implements ActionListener {
                 board.setBorder(redTurnBorder);
                 playerTurn.setText("<html>Your turn, Red.<br></html>");
             }
-        }
-        
-        //Check for required jumps at the beginning of the turn
+            
+        evaluateOptions();
+    }
+    
+    /**
+     * Evaluates the player's moves and pieces prior to beginning their turn. If
+     * the player has no pieces or no available moves, the game ends. If the
+     * player has a jump available, sets forceJump to true.
+     */
+    private void evaluateOptions(){
+        int pieceCount = 0;
+        boolean hasMove = false;
+
+        //Check for required jumps at the beginning of the turn, count the
+        //pieces, and check for available moves. If no pieces or no available
+        //moves, end the game
         for(Map.Entry<Integer, Piece> entry : pieceMap.entrySet()){
             if (pieceMap.get(entry.getKey()).getColor() == currentPlayer){
                 pieceCount++;
                 checkMoves(entry.getKey());
+                
+                for(int move : legalMoves){
+                    if (move != -1){
+                        hasMove = true;
+                    }
+                }
+                
                 if (jumpAvailable){
                     openingJump = true;
                     mandatoryJump.add(entry.getKey());
@@ -665,17 +673,24 @@ public class Checkers implements ActionListener {
         }
         
         //Ends the game and restarts with a fresh board
-        if(pieceCount == 0){
-            if(currentPlayer == 'r'){
-                JOptionPane.showMessageDialog(null, "Black wins!", "Game over!",
-                        JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(null, "Red wins!", "Game over!",
-                        JOptionPane.INFORMATION_MESSAGE);
-            }
-            cleanUp();
-            setBoard(); 
+        if( pieceCount == 0 || !hasMove ){
+            endGame();
         }
+    }
+    
+    /**
+     * Contains the code to end the game and displays who won
+     */
+    private void endGame(){
+        if(currentPlayer == 'r'){
+            JOptionPane.showMessageDialog(null, "Black wins!", "Game over!",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(null, "Red wins!", "Game over!",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+        cleanUp();
+        setBoard();
     }
     
     /**
@@ -826,14 +841,17 @@ public class Checkers implements ActionListener {
         //Take care of highlights and forced jumps
         cleanUp();
         if(lastMove.player != currentPlayer){
-            changePlayer(false);
+            changePlayer();
         }
         
         //Reset the selection to the piece that was just reverted
         takeAction(lastMove.from);
         
         //Get the move prior to the undo
-        Move prior = moveHistory.pop();
+        Move prior = null;
+        try{
+            prior = moveHistory.pop();
+        } catch (NoSuchElementException e){}
         
         if(lastMove.pieceJumped && prior.player == currentPlayer){
             forceJump = true;
@@ -841,11 +859,13 @@ public class Checkers implements ActionListener {
             spaceSelected = lastMove.from;
             //changePlayer(true);
         } else if(lastMove.pieceJumped && prior.player != currentPlayer){
-            changePlayer(true);
+            evaluateOptions();
         }
         
-        //Replace the prior move to avoid a null pointer if multiple undo select
-        moveHistory.push(prior);
+        //Replace the prior move to avoid a null pointer if multiple undos
+        if(prior != null){
+            moveHistory.push(prior);
+        }
     }
     
     /**
