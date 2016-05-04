@@ -16,7 +16,7 @@ public class Checkers implements ActionListener {
 
     // GUI class variables    
     private JFrame frame;
-    private JPanel primaryPanel, board, spacer;
+    private JPanel primaryPanel, board, top;
     private JLabel playerTurn;
     private JButton undoButton;
     private final Color redColor = new Color(200, 0, 0);
@@ -26,12 +26,8 @@ public class Checkers implements ActionListener {
     private final Border blackTurnBorder = BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.BLACK, 8), 
             BorderFactory.createLineBorder(Color.WHITE, 1));
-    
-    private HashMap<Integer, Piece> pieceMap = new HashMap<>();
-    private final HashMap<Integer, JButton> boardSpaces = new HashMap<>();
-    private HashSet<Integer> mandatoryJump = new HashSet<>();
-    private final ArrayDeque<Move> moveHistory = new ArrayDeque<>();
-    
+    private Dimension sizeOfSpace;
+        
     // Image class variables
     private static final ImageIcon RED_CHECKER = 
                 new ImageIcon("src/images/red.jpg");
@@ -41,32 +37,31 @@ public class Checkers implements ActionListener {
                 new ImageIcon("src/images/redKing.jpg");
     private static final ImageIcon BLACK_KING = 
                 new ImageIcon("src/images/blackKing.jpg");
-    private static final ImageIcon BACKGROUND_HORIZONTAL = 
-                new ImageIcon("src/images/sandstoneHorizontal.jpg");
-    private static final ImageIcon BACKGROUND_VERTICAL = 
-                new ImageIcon("src/images/sandstoneVertical.jpg");
+    private static final Image BACKGROUND = 
+                Toolkit.getDefaultToolkit().
+                        getImage("src/images/Sandstone.jpg");
     
     // Constants for use with the highlightSpace() method
     private static final boolean YELLOW = false;
     private static final boolean GREEN = true;
     
-    //Turn and input variables
+    // Turn and input variables
     private boolean selectionMade = false;
     private int spaceSelected = -1; //-1 is default value
     private char currentPlayer = 'r'; //red by default, toggled in play
     
-    //Movement related variables
+    // Movement related variables
+    private HashMap<Integer, Piece> pieceMap = new HashMap<>();
+    private final HashMap<Integer, JButton> boardSpaces = new HashMap<>();
+    private HashSet<Integer> mandatoryJump = new HashSet<>();
+    private final ArrayDeque<Move> moveHistory = new ArrayDeque<>();
     private boolean pieceJumped = false, jumpAvailable = false,
             forceJump = false, openingJump = false;
     private int[] legalMoves, jumpMoves;
     
-    // Constructor
-    public Checkers() {
-        createGUI();
-        setBoard();
-    }
-    
-    // nested private class for storing moves for undo capability
+    /**
+     * Nested private class for storing moves for undo capability
+     */
     private final class Move {        
         char player;
         int from;
@@ -77,69 +72,76 @@ public class Checkers implements ActionListener {
         boolean jumpForced;
         Icon jumpedIcon;
     }
+    
+    /**
+     * Constructor
+     */
+    public Checkers() {
+        createGUI();
+        setBoard();
+    }    
 
     /**
      * Creates the GUI and displays it for the user
      */
     private void createGUI() {
         frame = new JFrame("Checkers");
-        primaryPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
         
+        // Create background
+        primaryPanel = new JPanel(new GridBagLayout()){
+            @Override
+            public void paintComponent (Graphics g) {
+                super.paintComponent (g);
+                g.drawImage (BACKGROUND, 
+                        0, 0, getWidth (), getHeight (), null);
+            }
+        };
+        
+        GridBagConstraints c = new GridBagConstraints();        
         c.gridwidth = 3;
         c.gridheight = 1;
         c.gridy = 0;
         c.gridx = 0;
+        c.ipadx = 0;
         c.fill = GridBagConstraints.BOTH;
         
-        spacer = new JPanel(){
-            @Override
-            public void paintComponent (Graphics g) {
-                super.paintComponent (g);
-                g.drawImage (BACKGROUND_HORIZONTAL.getImage(), 
-                        0, 0, getWidth (), getHeight (), null);
-            }
-        };
-        spacer.setLayout(new FlowLayout());
-        spacer.setOpaque(true);
+        // Create top panel and label
+        top = new JPanel();
+        top.setLayout(new FlowLayout());
+        top.setOpaque(false);
         
         playerTurn = new JLabel("Your turn, Red");
-        playerTurn.setBackground(Color.LIGHT_GRAY);
         playerTurn.setOpaque(true);
         playerTurn.setHorizontalTextPosition(JLabel.CENTER);
         playerTurn.setVerticalTextPosition(JLabel.CENTER);
         playerTurn.setHorizontalAlignment(JLabel.CENTER);
         playerTurn.setVerticalAlignment(JLabel.CENTER);
-        playerTurn.setForeground(Color.BLACK);
+        playerTurn.setBackground(new Color(158, 136, 91));
+        playerTurn.setForeground(new Color(69, 47, 30));
         playerTurn.setFont(new Font("Serif", Font.BOLD, 34));
         playerTurn.setBorder(null);
         
-        spacer.add(playerTurn);
+        top.add(playerTurn);
         
-        primaryPanel.add(spacer, c);
-       
-        JLabel playerOne = new JLabel(BACKGROUND_VERTICAL){
-            @Override
-            public void paintComponent (Graphics g) {
-                super.paintComponent (g);
-                g.drawImage (BACKGROUND_VERTICAL.getImage(), 
-                        0, 0, getWidth (), getHeight (), null);
-            }
-        };
-        playerOne.setBorder(null);        
-        playerOne.setForeground(Color.WHITE);
+        primaryPanel.add(top, c);
+        
+        // Create left panel
+        JPanel left = new JPanel();
+        left.setOpaque(false);
+        c.ipadx = 60;
         c.gridwidth = 1;
         c.gridheight = 1;
         c.gridx = 0;
         c.gridy = 1;
-        primaryPanel.add(playerOne, c);
+        primaryPanel.add(left, c);
         
-        // size is the size of each space on the board
-        Dimension size = new Dimension(70, 70);
+        // Create the board
+        Dimension size = new Dimension(70, 70); // size is the size of 
+                                                // each space on the board
         board = new JPanel(new GridLayout(8, 8));
         board.setBorder(redTurnBorder);
         
-        // creates all the spaces and add them to the board
+        // Creates all spaces and adds them to the board
         for (int i = 1; i < 9; i++) {
             for (int j = 1; j < 9; j++) {
                 int count = j;
@@ -154,19 +156,18 @@ public class Checkers implements ActionListener {
                     space.setBackground(Color.BLACK);
                 }
                 
-                //Make sure the button doesn't have a border
+                // Make sure the button doesn't have a border
                 space.setBorder(null);
                 
-                //This will ensure that the correct number is assigned
-                int keyValue = 10*j + i;
+                // Ensure the correct number is assigned
+                int keyValue = 10 * j + i;
                 
-                //ActionCommand takes a string, we can parse it back later
+                // ActionCommand takes a string
                 space.setActionCommand(""+keyValue);
-                space.addActionListener(this); //ActionListener can determine
-                                               //What needs to be done based on
-                                               //Action command
+                space.addActionListener(this); // ActionListener determines
+                                               // action based on keyValue
                 
-                //Put the value into the map                               
+                //Put the value into the HashMap                               
                 boardSpaces.put(keyValue, space);
                 
                 board.add(space);
@@ -175,26 +176,20 @@ public class Checkers implements ActionListener {
         c.gridx = 1;
         primaryPanel.add(board, c);
         
-        JLabel playerTwo = new JLabel(BACKGROUND_VERTICAL){
-            @Override
-            public void paintComponent (Graphics g) {
-                super.paintComponent (g);
-                g.drawImage (BACKGROUND_VERTICAL.getImage(), 
-                        0, 0, getWidth (), getHeight (), null);
-            }
-        };
-        playerTwo.setForeground(Color.WHITE);
+        // Create the right panel
+        JPanel right = new JPanel();
+        right.setOpaque(false);
         c.gridx = 2;
-        primaryPanel.add(playerTwo, c);
+        primaryPanel.add(right, c);
         
+        // Create the menu button
         ImageIcon menuIcon = new ImageIcon("src/images/gear.png");
         JButton menuButton = new JButton(menuIcon);
         menuButton.setBorder(null);
-        menuButton.setContentAreaFilled(true);
-        menuButton.setActionCommand("menu");
+        menuButton.setActionCommand("menu");  // on click, bring up menu
         menuButton.addActionListener(this);
        
-        JButton invisibleUndoButton = new JButton();
+        // When CTRL+Z pressed, undo last move
         Action undoAction = new AbstractAction("") {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -202,34 +197,26 @@ public class Checkers implements ActionListener {
             }
         };
         String key = "Undo";
-        invisibleUndoButton.setAction(undoAction);
         undoAction.putValue(Action.MNEMONIC_KEY, KeyEvent.VK_Z);
-        invisibleUndoButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
-                KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK), 
-                key);
-        invisibleUndoButton.getActionMap().put(key, undoAction);
+        menuButton.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_Z, 
+                KeyEvent.CTRL_DOWN_MASK), key);
+        menuButton.getActionMap().put(key, undoAction);
         
-        JLabel bottom = new JLabel(BACKGROUND_HORIZONTAL){
-            @Override
-            public void paintComponent (Graphics g) {
-                super.paintComponent (g);
-                g.drawImage (BACKGROUND_HORIZONTAL.getImage(), 
-                        0, 0, getWidth (), getHeight (), null);
-            }
-        };
-        bottom.setLayout(new FlowLayout(FlowLayout.RIGHT));        
-        bottom.add(invisibleUndoButton); 
-        invisibleUndoButton.setOpaque(false);
-        invisibleUndoButton.setContentAreaFilled(false);
-        invisibleUndoButton.setBorderPainted(false);
+        // Create bottom panel and add menuButton
+        JPanel bottom = new JPanel();
+        bottom.setOpaque(false);
+        bottom.setLayout(new FlowLayout(FlowLayout.RIGHT));
         bottom.add(menuButton);
         bottom.revalidate();
         bottom.repaint();
+        c.ipadx = 0;
         c.gridwidth = 3;
         c.gridx = 0;
         c.gridy = 2;
         primaryPanel.add(bottom, c);
         
+        // Create the frame and display
         frame.add(primaryPanel);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.pack();
@@ -239,14 +226,14 @@ public class Checkers implements ActionListener {
     
     @Override
     public void actionPerformed(ActionEvent e){
+        // Display the menu when menuButton is pressed
         if (e.getActionCommand().equals("menu")){
             displaySettings();
-        } else {
+        } else { // Must be a board space            
             int key = Integer.parseInt(e.getActionCommand());
             takeAction(key);
         }
-    }
-    
+    }    
     
     /**
      * Sets up the board to initial set up. Used to reset the board when the
@@ -256,7 +243,7 @@ public class Checkers implements ActionListener {
         clearBoard();
 
         // create Red's pieces
-        for (int x = 21; x < 101; x += 20) { // top row
+        for (int x = 21; x < 101; x += 20) { // first row
             pieceMap.put(x, new Piece('r'));
             boardSpaces.get(x).setIcon(RED_CHECKER);
         }
@@ -288,16 +275,16 @@ public class Checkers implements ActionListener {
      * Removes all pieces from the board.
      */
     private void clearBoard() {
-        // loops through each piece on the board and removes the icon 
+        // Loops through each piece on the board and removes the icon 
         // from each space containing a piece
         for (Map.Entry<Integer, Piece> entry : pieceMap.entrySet()) {
             int key = entry.getKey();
             boardSpaces.get(key).setIcon(null);
         }
-        // clears out HashMap containing the location of each piece
+        // Clears out HashMap containing the location of each piece
         pieceMap = new HashMap<>();
         
-        // clear out the move history
+        // Clears out the move history
         moveHistory.clear();
     }
     
@@ -306,8 +293,7 @@ public class Checkers implements ActionListener {
      * it is to highlight spaces or call the movement method(s)
      * @param key is the selected space's HashMap key.
      */
-    private void takeAction(int key){
-        
+    private void takeAction(int key){        
         if(selectionMade){
             if(key == spaceSelected && !forceJump){
                 removeHighlight();
@@ -321,12 +307,62 @@ public class Checkers implements ActionListener {
                 if(isMoveLegal(key)) {
                     movePiece(key, spaceSelected);
                 } else {
-                    JOptionPane.showMessageDialog(null, "A piece has already "
-                        + "been selected or an illegal move was chosen. To "
-                        + "deselect the piece, click it again. Otherwise, "
-                        + "choose one of the highlighted squares to move.",
-                        "Illegal Selection", JOptionPane.ERROR_MESSAGE);
-                }
+                    removeHighlight();
+                    if(pieceMap.containsKey(key) && 
+                                pieceMap.get(key).getColor() == currentPlayer){                        
+                        checkMoves(key);
+                        if(openingJump){    
+                            if(pieceMap.containsKey(key) && 
+                                    pieceMap.get(key).getColor() == currentPlayer &&
+                                    mandatoryJump.contains(key)){
+                    
+                                highlightSpace(key, YELLOW);
+                                checkMoves(key);
+                                for(int move : jumpMoves){
+                                    highlightSpace(move, GREEN);
+                                }
+                            } else if(pieceMap.containsKey(key) &&
+                                    pieceMap.get(key).getColor() == currentPlayer){
+                    
+                                JOptionPane.showMessageDialog(null,
+                                    "It looks like one of your pieces can jump an "
+                                    + "opponent. If you have a jump available, "
+                                    + "you must take it.", "Mandatory Jump Available",
+                                    JOptionPane.ERROR_MESSAGE);
+                            }
+                        } else {
+                            for(int move: legalMoves){
+                                if (move != -1) {
+                                    highlightSpace(key, YELLOW);
+                                    if(forceJump){
+                                        for(int mov : jumpMoves){
+                                            highlightSpace(mov, GREEN);
+                                        }
+                                    } else {
+                                        for(int mov : legalMoves){
+                                            highlightSpace(mov, GREEN);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(pieceMap.containsKey(key) && 
+                        pieceMap.get(key).getColor() != currentPlayer){
+                        
+                        if(currentPlayer == 'r'){
+                            JOptionPane.showMessageDialog(null, 
+                                "Whoops, not your turn yet. It's red's turn.",
+                                "Wait for your turn!", 
+                                JOptionPane.INFORMATION_MESSAGE);
+                        } else {
+                            JOptionPane.showMessageDialog(null, 
+                                "Whoops, not your turn yet. It's black's turn.",
+                                "Wait for your turn!", 
+                                JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    }
+                }   
             }
         } else {
             if(pieceMap.containsKey(key) && 
@@ -630,11 +666,11 @@ public class Checkers implements ActionListener {
             if (currentPlayer == 'r'){
                 currentPlayer = 'b';
                 board.setBorder(blackTurnBorder);
-                playerTurn.setText("<html>Your turn, Black.<br></html>");
+                playerTurn.setText("Your turn, Black");
              } else {
                 currentPlayer = 'r';
                 board.setBorder(redTurnBorder);
-                playerTurn.setText("<html>Your turn, Red.<br></html>");
+                playerTurn.setText("Your turn, Red");
             }
             
         evaluateOptions();
@@ -700,22 +736,25 @@ public class Checkers implements ActionListener {
      * @param type determines the color of highlight applied. Checkers.YELLOW
      *             will highlight yellow, Checkers.GREEN will highlight green
      */
-    private void highlightSpace(int key, boolean type){
-                
+    private void highlightSpace(int key, boolean type){                
         //Check for "null" entry
         if(key == -1)
             return;
         
+        sizeOfSpace = boardSpaces.get(key).getSize();
+        int yellowsize = sizeOfSpace.height / 23;
+        int greensize = sizeOfSpace.height / 14;
+        
         if(type == YELLOW){
             boardSpaces.get(key).setBorder(
-            BorderFactory.createLineBorder(Color.yellow, 3));
+            BorderFactory.createLineBorder(Color.yellow, yellowsize));
                 
             selectionMade = true;
             spaceSelected = key;
             
         } else {
             boardSpaces.get(key).setBorder(
-                BorderFactory.createLineBorder(Color.green, 5));
+                BorderFactory.createLineBorder(Color.green, greensize));
         }
     }
     
@@ -880,3 +919,4 @@ public class Checkers implements ActionListener {
         });
     }
 }
+
