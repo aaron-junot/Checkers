@@ -93,7 +93,7 @@ public class Checkers implements ActionListener {
             public void paintComponent (Graphics g) {
                 super.paintComponent (g);
                 g.drawImage (BACKGROUND, 
-                        0, 0, getWidth (), getHeight (), null);
+                        0, 0, getWidth (), getHeight (), this);
             }
         };
         
