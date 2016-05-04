@@ -136,8 +136,9 @@ public class Checkers implements ActionListener {
         primaryPanel.add(left, c);
         
         // Create the board
-        Dimension size = new Dimension(70, 70); // size is the size of 
-                                                // each space on the board
+        Dimension size = new Dimension(70, 70); /* size is the size of 
+                                                   each space on the board 
+                                                */
         board = new JPanel(new GridLayout(8, 8));
         board.setBorder(redTurnBorder);
         
@@ -164,10 +165,11 @@ public class Checkers implements ActionListener {
                 
                 // ActionCommand takes a string
                 space.setActionCommand(""+keyValue);
-                space.addActionListener(this); // ActionListener determines
-                                               // action based on keyValue
+                space.addActionListener(this);  /* ActionListener determines
+                                                   action based on keyValue 
+                                                */
                 
-                //Put the value into the HashMap                               
+                // Put the value into the HashMap                               
                 boardSpaces.put(keyValue, space);
                 
                 board.add(space);
@@ -186,7 +188,7 @@ public class Checkers implements ActionListener {
         ImageIcon menuIcon = new ImageIcon("src/images/gear.png");
         JButton menuButton = new JButton(menuIcon);
         menuButton.setBorder(null);
-        menuButton.setActionCommand("menu");  // on click, bring up menu
+        menuButton.setActionCommand("menu");  // On click, bring up menu
         menuButton.addActionListener(this);
        
         // When CTRL+Z pressed, undo last move
@@ -242,7 +244,7 @@ public class Checkers implements ActionListener {
     private void setBoard() {
         clearBoard();
 
-        // create Red's pieces
+        // Create Red's pieces
         for (int x = 21; x < 101; x += 20) { // first row
             pieceMap.put(x, new Piece('r'));
             boardSpaces.get(x).setIcon(RED_CHECKER);
@@ -256,7 +258,7 @@ public class Checkers implements ActionListener {
             boardSpaces.get(z).setIcon(RED_CHECKER);
         }
 
-        // create Black's pieces
+        // Create Black's pieces
         for (int a = 16; a < 96; a += 20) { // sixth row
             pieceMap.put(a, new Piece('b'));
             boardSpaces.get(a).setIcon(BLACK_CHECKER);
@@ -275,8 +277,9 @@ public class Checkers implements ActionListener {
      * Removes all pieces from the board.
      */
     private void clearBoard() {
-        // Loops through each piece on the board and removes the icon 
-        // from each space containing a piece
+        /* Loops through each piece on the board and removes the icon 
+           from each space containing a piece 
+        */
         for (Map.Entry<Integer, Piece> entry : pieceMap.entrySet()) {
             int key = entry.getKey();
             boardSpaces.get(key).setIcon(null);
@@ -293,78 +296,96 @@ public class Checkers implements ActionListener {
      * it is to highlight spaces or call the movement method(s)
      * @param key is the selected space's HashMap key.
      */
-    private void takeAction(int key){        
+    private void takeAction(int key){
+        // If there is already a piece highlighted
         if(selectionMade){
+            // Deselect the space already selected
             if(key == spaceSelected && !forceJump){
                 removeHighlight();
                 selectionMade = false;
-                spaceSelected = -1; //return to default value
+                spaceSelected = -1; // Return to default value
+            // Require the user to continue jumping
             } else if (key == spaceSelected && forceJump) {
                 JOptionPane.showMessageDialog(null, "You must continue to "
                         + "jump until no more jumps are available!",
                         "Mandatory Jump Available", JOptionPane.ERROR_MESSAGE);
+            // Move the piece to the correct space
+            } else if(isMoveLegal(key)) {
+                movePiece(key, spaceSelected);
             } else {
-                if(isMoveLegal(key)) {
-                    movePiece(key, spaceSelected);
-                } else {
-                    removeHighlight();
-                    if(pieceMap.containsKey(key) && 
-                                pieceMap.get(key).getColor() == currentPlayer){                        
-                        checkMoves(key);
-                        if(openingJump){    
-                            if(pieceMap.containsKey(key) && 
-                                    pieceMap.get(key).getColor() == currentPlayer &&
-                                    mandatoryJump.contains(key)){
+                // Deselect the piece
+                removeHighlight();
+                // If the current player clicked one of their own pieces
+                if(pieceMap.containsKey(key) && 
+                        pieceMap.get(key).getColor() == currentPlayer){                        
+                    checkMoves(key);
+                    // If the player has a jump immediately available
+                    if(openingJump){
+                        // If they can jump a piece, 
+                        // highlight that for them automatically
+                        if(pieceMap.containsKey(key) && 
+                                pieceMap.get(key).getColor() == currentPlayer &&
+                                mandatoryJump.contains(key)){
                     
-                                highlightSpace(key, YELLOW);
-                                checkMoves(key);
-                                for(int move : jumpMoves){
-                                    highlightSpace(move, GREEN);
-                                }
-                            } else if(pieceMap.containsKey(key) &&
-                                    pieceMap.get(key).getColor() == currentPlayer){
-                    
-                                JOptionPane.showMessageDialog(null,
-                                    "It looks like one of your pieces can jump an "
-                                    + "opponent. If you have a jump available, "
-                                    + "you must take it.", "Mandatory Jump Available",
-                                    JOptionPane.ERROR_MESSAGE);
+                            highlightSpace(key, YELLOW);
+                            checkMoves(key);
+                            for(int move : jumpMoves){
+                                highlightSpace(move, GREEN);
                             }
-                        } else {
-                            for(int move: legalMoves){
-                                if (move != -1) {
-                                    highlightSpace(key, YELLOW);
-                                    if(forceJump){
-                                        for(int mov : jumpMoves){
-                                            highlightSpace(mov, GREEN);
-                                        }
-                                    } else {
-                                        for(int mov : legalMoves){
-                                            highlightSpace(mov, GREEN);
-                                        }
+                        // Enforce the mandatory jump
+                        } else if(pieceMap.containsKey(key) &&
+                                   pieceMap.get(key).getColor() == currentPlayer){
+                    
+                            JOptionPane.showMessageDialog(null,
+                                "It looks like one of your pieces can jump an "
+                                + "opponent. If you have a jump available, "
+                                + "you must take it.", "Mandatory Jump Available",
+                                JOptionPane.ERROR_MESSAGE);
+                        }
+                    /* Since there's not a jump, 
+                       highlight the moves for the selected piece 
+                    */
+                    } else {
+                        // Loop through legalMoves for this piece
+                        for(int move: legalMoves){
+                            if (move != -1) { // Do nothing if no legal moves
+                                highlightSpace(key, YELLOW);
+                                if(forceJump){ // If jump available, highlight it
+                                    for(int mov : jumpMoves){
+                                        highlightSpace(mov, GREEN);
+                                    }
+                                } else { // Highlight all legal moves
+                                    for(int mov : legalMoves){
+                                        highlightSpace(mov, GREEN);
                                     }
                                 }
                             }
                         }
                     }
-                    if(pieceMap.containsKey(key) && 
-                        pieceMap.get(key).getColor() != currentPlayer){
-                        
-                        if(currentPlayer == 'r'){
-                            JOptionPane.showMessageDialog(null, 
-                                "Whoops, not your turn yet. It's red's turn.",
-                                "Wait for your turn!", 
-                                JOptionPane.INFORMATION_MESSAGE);
-                        } else {
-                            JOptionPane.showMessageDialog(null, 
-                                "Whoops, not your turn yet. It's black's turn.",
-                                "Wait for your turn!", 
-                                JOptionPane.INFORMATION_MESSAGE);
-                        }
+                }
+                // If they selected an opponent's piece
+                if(pieceMap.containsKey(key) && 
+                    pieceMap.get(key).getColor() != currentPlayer){
+                    
+                    // Give an error message telling them to wait their turn
+                    if(currentPlayer == 'r'){
+                        JOptionPane.showMessageDialog(null, 
+                            "Whoops, not your turn yet. It's red's turn.",
+                            "Wait for your turn!", 
+                            JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(null, 
+                            "Whoops, not your turn yet. It's black's turn.",
+                            "Wait for your turn!", 
+                            JOptionPane.INFORMATION_MESSAGE);
                     }
-                }   
-            }
+                }
+                // Do nothing if they clicked a space without a piece on it
+            }   
+            
+        // If there is not already a piece highlighted
         } else {
+            // If they select opponent's piece, tell them to wait their turn
             if(pieceMap.containsKey(key) && 
                         pieceMap.get(key).getColor() != currentPlayer){
                     if(currentPlayer == 'r'){
@@ -379,7 +400,7 @@ public class Checkers implements ActionListener {
                             JOptionPane.INFORMATION_MESSAGE);
                     }
             
-            //If the player has a jump immediately available
+            // If the player has a jump immediately available
             } else if(openingJump){    
                 if(pieceMap.containsKey(key) && 
                         pieceMap.get(key).getColor() == currentPlayer &&
@@ -400,11 +421,11 @@ public class Checkers implements ActionListener {
                         JOptionPane.ERROR_MESSAGE);
                 }
             
-            //If the player has no immediate jump and can choose a piece
+            // If the player has no immediate jump and can choose a piece
             } else if(pieceMap.containsKey(key) && 
                                 pieceMap.get(key).getColor() == currentPlayer){
                 highlightSpace(key, YELLOW);
-                checkMoves(key);
+                checkMoves(key);                
                 if(forceJump){
                     for(int move : jumpMoves){
                         highlightSpace(move, GREEN);
@@ -426,43 +447,47 @@ public class Checkers implements ActionListener {
     private void checkMoves(int key){
         char color = pieceMap.get(key).getColor();
         boolean isKing = pieceMap.get(key).getKingStatus();
-        int possibilities = (isKing) ? 4 : 2; //if it's a king, there are 4
-                                              //move options, otherwise 2
+        int possibilities = (isKing) ? 4 : 2; /* if it's a king, there are 4
+                                                 move options, otherwise 2
+                                              */
         int[] option = new int[possibilities];
         jumpMoves = new int[possibilities];
         
         if (isKing){
-            option[0] = key - 9; //down left
-            option[1] = key + 11; //down right
-            option[2] = key - 11; //up left
-            option[3] = key + 9; //up right
+            option[0] = key - 9;  // down left
+            option[1] = key + 11; // down right
+            option[2] = key - 11; // up left
+            option[3] = key + 9;  // up right
         } else if (color == 'r'){
-            option[0] = key - 9; //down left
-            option[1] = key + 11; //down right
+            option[0] = key - 9;  // down left
+            option[1] = key + 11; // down right
         } else{
-            option[0] = key - 11; //up left
-            option[1] = key + 9; // up right
+            option[0] = key - 11; // up left
+            option[1] = key + 9;  // up right
         }
         
-        //Check for occupied space
+        // Check for occupied space
         for(int i=0;i<possibilities;i++){
             if(pieceMap.containsKey(option[i])){
                 char tempColor = pieceMap.get(option[i]).getColor();
                 
-                if(color == tempColor){ //The piece is on the same team
-                    option[i] = -1; //Not a move option
+                if(color == tempColor){ // The piece is on the same team
+                    option[i] = -1; // Not a move option
                 } else {
-                    //Get's the jump landing spot
+                    // Gets the jump landing spot
                     option[i] = checkJump(option[i], color, i, isKing);
-                    jumpMoves[i] = 1; //1 indicates that a jump was available
-                                      //at this index for a later check
+                    jumpMoves[i] = 1; /* 1 indicates that a jump was available
+                                         at this index for a later check
+                                      */
 
-                    /*If the jump landing spot contains ANY piece, it's not an
-                    option*/
+                    /* If the jump landing spot contains ANY piece, it's not an
+                       option
+                    */
                     if(pieceMap.containsKey(option[i])){
                         option[i] = -1;
-                        jumpMoves[i] = -1; //During a later check, -1 will mean
-                                          //that that index was not a jump opt
+                        jumpMoves[i] = -1; /* During a later check, -1 will mean
+                                              that that index was not a jump opt
+                                           */
                     }
                 }
             } else { 
@@ -470,25 +495,25 @@ public class Checkers implements ActionListener {
             }
         }
 
-        //Check for out of bounds options
+        // Check for out of bounds options
         for(int i=0;i<possibilities;i++){
-            if(option[i] < 11 || option[i] > 88 || //left and right limits
+            if(option[i] < 11 || option[i] > 88 || // left and right limits
                 (option[i] > 18 && option[i] < 21) || // 
                 (option[i] > 28 && option[i] < 31) || //
-                (option[i] > 38 && option[i] < 41) || //Vertical
-                (option[i] > 48 && option[i] < 51) || //limits
+                (option[i] > 38 && option[i] < 41) || // Vertical
+                (option[i] > 48 && option[i] < 51) || // limits
                 (option[i] > 58 && option[i] < 61) || //
                 (option[i] > 68 && option[i] < 71) || //
                 (option[i] > 78 && option[i] < 81)){  //
 
-                option[i] = -1; //Essentially a null value
+                option[i] = -1; // Essentially a null value
             }
         }
         
-        //Finalize jumpMoves after option[] was checked for out of bounds
+        // Finalize jumpMoves after option[] was checked for out of bounds
         for(int i=0;i<possibilities;i++){
             if(jumpMoves[i] == 1 && option[i] != -1){
-                jumpMoves[i] = option[i]; //set that index to the key value
+                jumpMoves[i] = option[i]; // Set that index to the key value
                 jumpAvailable = true;
             } else {
                 jumpMoves[i] = -1;
@@ -498,6 +523,11 @@ public class Checkers implements ActionListener {
         legalMoves = option;
     }
     
+    /**
+     * Method to determine if a move is legal
+     * @param key The destination space for the piece
+     * @return true if move is legal, otherwise false
+     */
     private boolean isMoveLegal(int key){
         boolean test = false;
         
@@ -526,10 +556,10 @@ public class Checkers implements ActionListener {
      * @return int key for the landing space of a jump.
      */
     private int checkJump(int key, char color, int i, boolean isKing){
-        int direction = i; //0=down-left, 1=d-right, 2=up-left, 3=u-right 
+        int direction = i; // 0=down-left, 1=d-right, 2=up-left, 3=u-right 
         int newKey = -1;
         
-        //Adjust direction if color is black
+        // Adjust direction if color is black
         if(color == 'b' && !isKing)
             direction = i + 2;
         
@@ -559,6 +589,7 @@ public class Checkers implements ActionListener {
      * Removes piece from board after being jumped
      * @param key is the map key of the piece to be removed
      * @param spaceSelected is the map key of the space that needs to be blank
+     * @return the Icon of the jumped piece, to allow for undo
      */
     private Icon jumpPiece(int key, int spaceSelected){
         Icon jumpedIcon = null;                                 
@@ -594,37 +625,35 @@ public class Checkers implements ActionListener {
      *                      current position on the board)
      */
     private void movePiece(int key, int spaceSelected){
-        // capture info about this move to store in the moveHistory ArrayDeque
+        // Capture info about this move to store in the moveHistory ArrayDeque
         Move thisMove = new Move();
         thisMove.from = spaceSelected;
         thisMove.to = key;
         thisMove.player = currentPlayer;
-        //thisMove.availableJump = jumpAvailable;
-        //thisMove.jumpForced = forceJump;
         
         Piece piece = pieceMap.get(spaceSelected);
         JButton toSpace = boardSpaces.get(key);
         JButton fromSpace = boardSpaces.get(spaceSelected);
         
-        // move the piece in the HashMap
+        // Move the piece in the HashMap
         pieceMap.put(key, piece);
         pieceMap.remove(spaceSelected);
         
-        // move the piece on the GUI        
+        // Move the piece on the GUI        
         toSpace.setIcon(fromSpace.getIcon());
         fromSpace.setIcon(null);
         
-        // jump a piece if necessary
+        // Jump a piece if necessary
         if (Math.abs(key - spaceSelected) > 11) {            
             thisMove.jumpedIcon = jumpPiece(key, spaceSelected);
             thisMove.pieceJumped = true; 
             pieceJumped = true;
             jumpAvailable = false;
-            //Check for additional jump options
+            // Check for additional jump options
             checkMoves(key);
         }
         
-        // king the piece if necessary
+        // King the piece if necessary
         if ((piece.getColor() == 'r' && key % 10 == 8) ||
                 piece.getColor() == 'b' && key % 10 == 1) {
             kingMe(piece, toSpace);
@@ -634,8 +663,9 @@ public class Checkers implements ActionListener {
         moveHistory.push(thisMove);
         
         if(pieceJumped && jumpAvailable){
-            /*This creates a clean slate so each subsequent move is fresh, but
-            also keeps track of whether that a move is required*/
+            /* This creates a clean slate so each subsequent move is fresh, but
+               also keeps track of whether a move is required
+            */
             cleanUp();
             forceJump = true;
             takeAction(key);
@@ -685,9 +715,10 @@ public class Checkers implements ActionListener {
         int pieceCount = 0;
         boolean hasMove = false;
 
-        //Check for required jumps at the beginning of the turn, count the
-        //pieces, and check for available moves. If no pieces or no available
-        //moves, end the game
+        /* Check for required jumps at the beginning of the turn, count the
+           pieces, and check for available moves. If no pieces or no available
+           moves, end the game
+        */
         for(Map.Entry<Integer, Piece> entry : pieceMap.entrySet()){
             if (pieceMap.get(entry.getKey()).getColor() == currentPlayer){
                 pieceCount++;
@@ -702,13 +733,14 @@ public class Checkers implements ActionListener {
                 if (jumpAvailable){
                     openingJump = true;
                     mandatoryJump.add(entry.getKey());
-                    jumpAvailable = false; //necessary to ensure only elements
-                                           //with jumps are added
+                    jumpAvailable = false;  /* Necessary to ensure only elements
+                                               with jumps are added
+                                            */
                 }      
             }
         }
         
-        //Ends the game and restarts with a fresh board
+        // Ends the game and restarts with a fresh board
         if( pieceCount == 0 || !hasMove ){
             endGame();
         }
@@ -737,10 +769,11 @@ public class Checkers implements ActionListener {
      *             will highlight yellow, Checkers.GREEN will highlight green
      */
     private void highlightSpace(int key, boolean type){                
-        //Check for "null" entry
+        // Check for "null" entry
         if(key == -1)
             return;
         
+        // Highlight width is independent of size of each space
         sizeOfSpace = boardSpaces.get(key).getSize();
         int yellowsize = sizeOfSpace.height / 23;
         int greensize = sizeOfSpace.height / 14;
@@ -758,6 +791,9 @@ public class Checkers implements ActionListener {
         }
     }
     
+    /**
+     * Removes all highlights on the board
+     */
     private void removeHighlight(){
         for(Map.Entry<Integer, JButton> entry : boardSpaces.entrySet()){
             boardSpaces.get(entry.getKey()).setBorder(null);
@@ -778,6 +814,9 @@ public class Checkers implements ActionListener {
         removeHighlight();
     }
     
+    /**
+     * Creates and displays a new window containing various settings
+     */
     private void displaySettings() {
         JDialog dialog = new JDialog(frame, "Settings");
         JLabel label = new JLabel("Settings");
@@ -814,26 +853,30 @@ public class Checkers implements ActionListener {
         dialog.setVisible(true);
     }
     
+    /**
+     * Called when the user presses CTRL+Z or 
+     * the undo button in the settings menu
+     */
     private void undoMove(){
         if (moveHistory.isEmpty()){
             return;
         }
-        // get the last move
+        // Get the last move
         Move lastMove = moveHistory.pop();
                 
         Piece piece = pieceMap.get(lastMove.to);
         JButton toSpace = boardSpaces.get(lastMove.from);
         JButton fromSpace = boardSpaces.get(lastMove.to);
         
-        // move the piece in the pieceMap
+        // Move the piece in the pieceMap
         pieceMap.put(lastMove.from, piece);
         pieceMap.remove(lastMove.to);
         
-        // move the piece on the GUI        
+        // Move the piece on the GUI        
         toSpace.setIcon(fromSpace.getIcon());
         fromSpace.setIcon(null);        
               
-        // unjump a piece if necessary
+        // Unjump a piece if necessary
         if (lastMove.pieceJumped) {
             Piece jumpedPiece;
             if (lastMove.player == 'r'){
@@ -863,7 +906,7 @@ public class Checkers implements ActionListener {
             }
         } 
         
-        // unking the piece if necessary
+        // Unking the piece if necessary
         if (lastMove.pieceKinged) {
             if (piece.getColor() == 'b'){
                 toSpace.setIcon(BLACK_CHECKER);
@@ -872,36 +915,37 @@ public class Checkers implements ActionListener {
             }
             piece.demotePiece();
         }
-                               
+        
+        // Disable the undoButton in the Settings menu
         if (undoButton != null && moveHistory.isEmpty()){
             undoButton.setEnabled(false);
         }
         
-        //Take care of highlights and forced jumps
+        // Take care of highlights and forced jumps
         cleanUp();
         if(lastMove.player != currentPlayer){
             changePlayer();
         }
         
-        //Reset the selection to the piece that was just reverted
+        // Reset the selection to the piece that was just reverted
         takeAction(lastMove.from);
         
-        //Get the move prior to the undo
+        // Get the move prior to the undo
         Move prior = null;
         try{
             prior = moveHistory.pop();
-        } catch (NoSuchElementException e){}
-        
-        if(lastMove.pieceJumped && prior.player == currentPlayer){
+            if(lastMove.pieceJumped && prior.player == currentPlayer){
             forceJump = true;
             selectionMade = true;
             spaceSelected = lastMove.from;
-            //changePlayer(true);
-        } else if(lastMove.pieceJumped && prior.player != currentPlayer){
-            evaluateOptions();
-        }
+            } else if(lastMove.pieceJumped && prior.player != currentPlayer){
+                evaluateOptions();
+            }
+        } catch (NoSuchElementException e){}
         
-        //Replace the prior move to avoid a null pointer if multiple undos
+        
+        
+        // Replace the prior move to avoid a null pointer if multiple undos
         if(prior != null){
             moveHistory.push(prior);
         }
