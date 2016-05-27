@@ -93,7 +93,7 @@ public class Checkers implements ActionListener {
             public void paintComponent (Graphics g) {
                 super.paintComponent (g);
                 g.drawImage (BACKGROUND, 
-                        0, 0, getWidth (), getHeight (), this);
+                        0, 0, getWidth(), getHeight(), this);
             }
         };
         
@@ -312,9 +312,13 @@ public class Checkers implements ActionListener {
             // Move the piece to the correct space
             } else if(isMoveLegal(key)) {
                 movePiece(key, spaceSelected);
+            } else if(!isMoveLegal(key) && forceJump){
+                JOptionPane.showMessageDialog(null, "You must jump the piece.",
+                        "Mandatory Jump Available", JOptionPane.ERROR_MESSAGE);
             } else {
                 // Deselect the piece
                 removeHighlight();
+                selectionMade = false;
                 // If the current player clicked one of their own pieces
                 if(pieceMap.containsKey(key) && 
                         pieceMap.get(key).getColor() == currentPlayer){                        
@@ -515,6 +519,7 @@ public class Checkers implements ActionListener {
             if(jumpMoves[i] == 1 && option[i] != -1){
                 jumpMoves[i] = option[i]; // Set that index to the key value
                 jumpAvailable = true;
+                forceJump = true;
             } else {
                 jumpMoves[i] = -1;
             }
